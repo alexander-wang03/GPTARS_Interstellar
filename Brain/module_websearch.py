@@ -1,3 +1,14 @@
+
+"""
+module_websearch.py
+
+Web Search Module for GPTARS Application.
+
+This module provides functionality for performing web searches using Selenium WebDriver. 
+It supports multiple search engines and allows for extracting specific content, links, 
+and structured data from search results.
+"""
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options as ChromeOptions

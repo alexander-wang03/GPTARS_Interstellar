@@ -1,3 +1,12 @@
+"""
+app-server.py
+
+Flask Server for GPTARS Application.
+
+This script provides a Flask-based API server to handle image captioning 
+and audio transcription tasks using pre-trained machine learning models.
+"""
+
 from flask import Flask, request, jsonify
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from PIL import Image

@@ -1,3 +1,13 @@
+"""
+module_vision.py
+
+Vision Processing Module for GPTARS Application.
+
+This module handles image capture and caption generation, supporting both server-hosted 
+and on-device processing modes. It utilizes the BLIP model for on-device inference and 
+communicates with a server endpoint for remote processing.
+"""
+
 import subprocess
 import traceback
 from PIL import Image

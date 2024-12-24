@@ -1,3 +1,12 @@
+"""
+module_engineTrainer.py
+
+Provides functionality to train a text classification model for use in the GPTARS application.
+
+This module uses labeled training data to build a Naive Bayes-based text classifier with TF-IDF vectorization. 
+The trained model and vectorizer are saved as pickle files for use by other components of the application.
+"""
+
 import pandas as pd
 import joblib
 from sklearn import __version__ as sklearn_version

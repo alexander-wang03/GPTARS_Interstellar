@@ -1,10 +1,21 @@
+"""
+module_btcontroller.py
+
+Provides functionality for managing and interpreting Bluetooth gamepad input 
+to control servos and execute specific actions in the GPTARS system.
+
+This module listens to gamepad events such as button presses, joystick movements, 
+and D-pad directions, mapping these events to corresponding robotic movements or 
+in-app commands. 
+"""
+
 import evdev
 import time
 from datetime import datetime
-import module_servoctl as module_servoctl
+from module_servoctl import *
 from evdev import InputDevice, categorize, ecodes, list_devices
 import Adafruit_PCA9685
-
+        
 pwm = Adafruit_PCA9685.PCA9685(busnum=1)  # Specify I2C bus 1
 
 #port

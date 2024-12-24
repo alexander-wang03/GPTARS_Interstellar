@@ -1,3 +1,12 @@
+"""
+module_secrets.py
+
+Secrets module for GPTARS application.
+
+This module provides functionality to handle secret or special content, specifically:
+- Playing video files in fullscreen mode with optional rotation.
+"""
+
 from moviepy import VideoFileClip
 import os
 from pathlib import Path

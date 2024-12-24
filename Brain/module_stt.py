@@ -1,3 +1,13 @@
+"""
+module_stt.py
+
+Handles speech-to-text (STT) processing for the GPTARS system. 
+
+This module integrates both local and server-based transcription, wake word detection, 
+and voice command handling. It supports custom callbacks to trigger actions upon 
+detecting speech or specific keywords.
+"""
+
 import os
 import random
 import sounddevice as sd
@@ -12,7 +22,6 @@ import configparser
 import sys
 import numpy as np
 import json
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Set the working directory to the base directory

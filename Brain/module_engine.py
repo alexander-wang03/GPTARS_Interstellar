@@ -1,3 +1,12 @@
+"""
+module_engine.py
+
+A core module for GPTARS, responsible for intelligently predicting user intents, 
+determining module requirements, and executing tool-specific functions like web searches and vision analysis. 
+
+This is accomplished using a pre-trained Naive Bayes classifier and TF-IDF vectorizer.
+"""
+
 import requests
 import joblib 
 from module_websearch import *

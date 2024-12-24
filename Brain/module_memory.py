@@ -252,9 +252,9 @@ def read_character_content():
         print(f"Error: {e}")
 
 def token_count(text):
-    '''
+    """
     Calculate the number of tokens in the given text for a specific LLM backend.
-    '''
+    """
 
     # Check the LLM backend and set the URL accordingly
     if llm_backend == "openai":

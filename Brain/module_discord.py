@@ -1,3 +1,12 @@
+"""
+module_discord.py
+
+Discord Integration Module for GPTARS Application.
+
+This module provides integration with Discord for real-time interaction. 
+It allows the bot to respond to messages and mentions in a specified Discord channel.
+"""
+
 import discord
 import time
 

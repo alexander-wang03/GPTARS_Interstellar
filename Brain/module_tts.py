@@ -1,3 +1,12 @@
+"""
+module_tts.py
+
+This module handles Text-to-Speech (TTS) functionality for GPTARS. 
+
+It supports both local and server-based TTS systems to convert text into audio streams, 
+integrating seamlessly with other modules.
+"""
+
 import time
 import requests
 import configparser
@@ -9,7 +18,6 @@ config.read('config.ini')
 charvoice = config.getboolean('TTS', 'charvoice')
 ttsoption = config['TTS']['ttsoption']
 ttsclone = config['TTS']['ttsclone']
-ttsurl = config['TTS']['ttsurl']
 voiceonly = config.getboolean('TTS', 'voiceonly')
 
 start_time = time.time()

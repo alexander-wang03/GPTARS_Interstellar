@@ -21,3 +21,4 @@ libsox-fmt-all
 #espeak-ng
 #alsa-utils
 portaudio19-dev
+adafruit-pca9685

@@ -1,3 +1,12 @@
+"""
+module_config.py
+
+Handles the configuration loading for the GPTARS application.
+
+This module reads configuration details from the `config.ini` file and environment 
+variables, providing a structured dictionary for easy access throughout the application. 
+"""
+
 import os
 from dotenv import load_dotenv
 load_dotenv()

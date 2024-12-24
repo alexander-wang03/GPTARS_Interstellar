@@ -1,3 +1,12 @@
+"""
+module_imagesummary.py
+
+This module provides functionality for image summarization by generating captions from images. 
+
+It uses the BLIP (Bootstrapped Language-Image Pre-training) model for image captioning, 
+enabling image understanding and integration within the GPTARS system.
+"""
+
 from PIL import Image
 from transformers import BlipProcessor, BlipForConditionalGeneration
 import base64

@@ -1,3 +1,15 @@
+"""
+module_servoctl.py
+
+Servo Control Module for GPTARS Application.
+
+This module provides a comprehensive set of functions to control servos in TARS, enabling complex movements such as:
+- Torso height adjustment.
+- Torso rotation to forward/backward positions.
+- Controlled arm and hand movements.
+- Synchronized servo adjustments for smooth motion transitions.
+"""
+
 from __future__ import division
 import time
 import Adafruit_PCA9685

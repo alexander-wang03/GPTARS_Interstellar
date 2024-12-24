@@ -1,3 +1,16 @@
+"""
+module_main.py
+
+Main logic module for the GPTARS application.
+
+This file integrates various modules and handles core functionalities, including:
+- Managing Text-to-Speech (TTS) playback and configuration.
+- Setting up and interacting with Large Language Model (LLM) backends.
+- Building prompts and processing user inputs to generate AI responses.
+- Handling wake words, speech-to-text (STT), and user interaction workflows.
+- Managing emotion detection, character customization, and system threading for smooth operation.
+"""
+
 #Define needed globals
 global start_time
 global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
@@ -225,9 +238,9 @@ def build_prompt(user_prompt):
     return prompt
 
 def get_completion(prompt, istext):
-    '''
+    """
     Get the completion from the LLM backend.
-    '''
+    """
 
     global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
     
@@ -335,9 +348,9 @@ def stop_generation():
     print("Stop generation request successful.")
 
 def token_count(text):
-    '''
+    """
     Calculate the number of tokens in the given text for a specific LLM backend.
-    '''
+    """
 
     # Check the LLM backend and set the URL accordingly
     if llm_backend == "openai":
