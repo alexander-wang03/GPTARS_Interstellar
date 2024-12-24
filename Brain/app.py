@@ -22,7 +22,7 @@ from module_stt import *
 from module_memory import *
 from module_engine import *
 from module_tts import *
-from module_imagesummary import *
+from module_imageSummary import *
 from module_config import load_config
 from module_main import handle_stt_message, wake_word_tts, start_stt_thread, start_bt_controller_thread
 

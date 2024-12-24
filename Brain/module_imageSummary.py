@@ -1,5 +1,5 @@
 """
-module_imagesummary.py
+module_imageSummary.py
 
 This module provides functionality for image summarization by generating captions from images. 
 
