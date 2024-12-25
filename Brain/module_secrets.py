@@ -1,38 +1,44 @@
 """
 module_secrets.py
 
-Secrets module for GPTARS application.
+Secrets Module for GPTARS Application.
 
-This module provides functionality to handle secret or special content, specifically:
-- Playing video files in fullscreen mode with optional rotation.
+This module provides functionality for handling secret or special content.
 """
 
-from moviepy import VideoFileClip
-import os
+# === Standard Libraries ===
 from pathlib import Path
+from moviepy.video.io.VideoFileClip import VideoFileClip
 
 def play_video_fullscreen(video_path, rotation_angle=0):
     """
-    Play a video in fullscreen mode using MoviePy while maintaining aspect ratio.
+    Plays a video in fullscreen mode using MoviePy while maintaining aspect ratio.
 
     Parameters:
     - video_path (str): Path to the video file to play.
-    - rotation_angle (int): Angle to rotate the video, default is 0.
+    - rotation_angle (int): Angle to rotate the video (default is 0).
     """
+    # Resolve the base directory of the current file
     BASE_DIR = Path(__file__).resolve().parent
 
-    # Create the full path to the video
-    clip_path = os.path.join(BASE_DIR, video_path)
+    # Construct the absolute path to the video file
+    clip_path = BASE_DIR / video_path
 
-    # Load the video file
-    clip = VideoFileClip(clip_path)
+    # Ensure the video file exists
+    if not clip_path.exists():
+        raise FileNotFoundError(f"[ERROR] Video file not found: {clip_path}")
 
-    # Rotate the video if necessary
-    if rotation_angle != 0:
-        clip = clip.rotate(rotation_angle)
+    try:
+        # Load the video file
+        clip = VideoFileClip(str(clip_path))
 
-    # Play the video using MoviePy's built-in preview method
-    clip.preview()
+        # Apply rotation if specified
+        if rotation_angle != 0:
+            clip = clip.rotate(rotation_angle)
 
-    # Close the clip to release resources
-    clip.close()
+        # Play the video in fullscreen mode
+        clip.preview()
+
+    finally:
+        # Close the video clip to release resources
+        clip.close()

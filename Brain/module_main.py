@@ -15,7 +15,7 @@ This file integrates various modules and handles core functionalities, including
 global start_time
 global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
 
-#needed imports
+# === Standard Libraries ===
 import os
 import sys
 import threading
@@ -28,12 +28,12 @@ import sounddevice as sd
 import numpy as np
 import concurrent.futures
 
-#custom imports
+# === Custom Modules ===
 from module_config import load_config
 from module_btcontroller import *
 from module_stt import *
 from module_memory import *
-from module_engine import *
+from module_engine import check_for_module
 from module_tts import *
 from module_imageSummary import *
 
