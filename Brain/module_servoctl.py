@@ -15,10 +15,16 @@ import time
 import Adafruit_PCA9685
 from threading import Thread
 
-pwm = Adafruit_PCA9685.PCA9685(busnum=1)  # Specify I2C bus 1
-
-# Set frequency to 60hz, good for servos.
-pwm.set_pwm_freq(60)
+try:
+    # Attempt to initialize the PCA9685 using I2C
+    pwm = Adafruit_PCA9685.PCA9685(busnum=1)
+    pwm.set_pwm_freq(60)  # Set frequency to 60 Hz for servos
+except FileNotFoundError as e:
+    print(f"Error: I2C device not found. Ensure that /dev/i2c-1 exists. Details: {e}")
+    pwm = None  # Fallback if hardware is unavailable
+except Exception as e:
+    print(f"Unexpected error during PCA9685 initialization: {e}")
+    pwm = None  # Fallback if hardware is unavailable
 
 portMain = 610
 starMain = 200

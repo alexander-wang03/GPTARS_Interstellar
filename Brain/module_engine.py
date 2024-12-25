@@ -7,7 +7,6 @@ determining module requirements, and executing tool-specific functions like web 
 This is accomplished using a pre-trained Naive Bayes classifier and TF-IDF vectorizer.
 """
 
-import requests
 import joblib 
 from module_websearch import *
 from module_vision import *

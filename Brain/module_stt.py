@@ -18,10 +18,11 @@ import requests
 from datetime import datetime
 from io import BytesIO
 import wave
-import configparser
 import sys
 import numpy as np
 import json
+
+from module_config import load_config
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Set the working directory to the base directory
@@ -29,14 +30,10 @@ os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-use_server_stt = config.getboolean("STT", "use_server")
-server_url = config["STT"]["server_url"]
+CONFIG = load_config()
 
 vosk_model = None
-if not use_server_stt:
+if not CONFIG['STT']['use_server']:
     VOSK_MODEL_PATH = os.path.join(BASE_DIR, "vosk-model-small-en-us-0.15")
     if not os.path.exists(VOSK_MODEL_PATH):
         raise FileNotFoundError("Vosk model not found. Download from: https://alphacephei.com/vosk/models")
@@ -221,7 +218,7 @@ def transcribe_with_server():
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Sent {buffer_size} bytes of audio")
         files = {"audio": ("audio.wav", audio_buffer, "audio/wav")}
 
-        response = requests.post(server_url, files=files, timeout=10)
+        response = requests.post(CONFIG["STT"]["server_url"], files=files, timeout=10)
 
         # Handle server response
         if response.status_code == 200:
@@ -268,9 +265,6 @@ def transcribe_with_server():
     finally:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Exiting transcribe_with_server.")
 
-
-
-
 def start_stt(stop_event: Event = None):
     """
     Start the voice assistant. Listens for wake word and transcribes commands.
@@ -293,7 +287,6 @@ def start_stt(stop_event: Event = None):
     finally:
         print("STT stopped.")
 
-
 def stop_stt():
     """
     Stop the voice assistant.
@@ -301,7 +294,6 @@ def stop_stt():
     global running
     running = False
     print("Voice assistant stopped.")
-
 
 def set_message_callback(callback):
     """

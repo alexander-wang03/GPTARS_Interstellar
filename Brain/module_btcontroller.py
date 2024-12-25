@@ -15,20 +15,30 @@ from datetime import datetime
 from module_servoctl import *
 from evdev import InputDevice, categorize, ecodes, list_devices
 import Adafruit_PCA9685
-        
-pwm = Adafruit_PCA9685.PCA9685(busnum=1)  # Specify I2C bus 1
 
-#port
-pwm.set_pwm(3, 3, 610)
-pwm.set_pwm(4, 4, 570)
-pwm.set_pwm(5, 5, 570)
-#starboard
-pwm.set_pwm(6, 6, 200)
-pwm.set_pwm(7, 7, 200)
-pwm.set_pwm(8, 8, 240)
+try:
+    pwm = Adafruit_PCA9685.PCA9685(busnum=1)  # Specify I2C bus 1
+    pwm.set_pwm_freq(60)  # Set frequency to 60 Hz
+except FileNotFoundError as e:
+    print(f"Error: I2C device not found. Ensure that /dev/i2c-1 exists. Details: {e}")
+    pwm = None  # Fallback if hardware is unavailable
+except Exception as e:
+    print(f"Unexpected error during PCA9685 initialization: {e}")
+    pwm = None  # Fallback if hardware is unavailable
 
-# Set frequency to 60hz, good for servos.
-pwm.set_pwm_freq(60)
+# Set initial servo positions
+if pwm:
+    try:
+        # Port
+        pwm.set_pwm(3, 3, 610)
+        pwm.set_pwm(4, 4, 570)
+        pwm.set_pwm(5, 5, 570)
+        # Starboard
+        pwm.set_pwm(6, 6, 200)
+        pwm.set_pwm(7, 7, 200)
+        pwm.set_pwm(8, 8, 240)
+    except Exception as e:
+        print(f"Error setting initial servo positions: {e}")
 
 lTrg = 37
 rTrg = 50

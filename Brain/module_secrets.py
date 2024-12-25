@@ -11,8 +11,6 @@ from moviepy import VideoFileClip
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-
 def play_video_fullscreen(video_path, rotation_angle=0):
     """
     Play a video in fullscreen mode using MoviePy while maintaining aspect ratio.
@@ -21,6 +19,7 @@ def play_video_fullscreen(video_path, rotation_angle=0):
     - video_path (str): Path to the video file to play.
     - rotation_angle (int): Angle to rotate the video, default is 0.
     """
+    BASE_DIR = Path(__file__).resolve().parent
 
     # Create the full path to the video
     clip_path = os.path.join(BASE_DIR, video_path)

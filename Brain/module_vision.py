@@ -15,15 +15,10 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from io import BytesIO
 import requests
 import torch
-import configparser
+from module_config import load_config
 
 # Load configuration
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-# Vision configuration
-server_hosted = config['VISION']['server_hosted']
-vision_base_url = config['VISION']['base_url']
+CONFIG = load_config()
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -31,7 +26,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # BLIP model initialization (only for on-device)
 processor = None
 model = None
-
 
 def initialize_blip_model():
     """
@@ -55,8 +49,8 @@ def capture_image() -> BytesIO:
     """
     try:
         # Adjust resolution based on whether the server is hosted or on-device
-        width = "2592" if server_hosted == 'True' else "320"
-        height = "1944" if server_hosted == 'True' else "240"
+        width = "2592" if CONFIG['VISION']['server_hosted'] == 'True' else "320"
+        height = "1944" if CONFIG['VISION']['server_hosted'] == 'True' else "240"
         
         # Capture the image directly to stdout
         command = [
@@ -82,7 +76,7 @@ def send_image_to_server(image_bytes: BytesIO) -> str:
     """
     try:
         files = {'image': ('image.jpg', image_bytes, 'image/jpeg')}
-        response = requests.post(f"{vision_base_url}/caption", files=files)
+        response = requests.post(f"{CONFIG['VISION']['base_url']}/caption", files=files)
 
         if response.status_code == 200:
             return response.json().get("caption", "No caption returned")
@@ -102,7 +96,7 @@ def describe_camera_view() -> str:
         # Capture the image
         image_bytes = capture_image()
 
-        if server_hosted == 'True':
+        if CONFIG['VISION']['server_hosted'] == 'True':
             # Use server-hosted vision processing
             return send_image_to_server(image_bytes)
         else:

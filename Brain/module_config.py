@@ -7,17 +7,22 @@ This module reads configuration details from the `config.ini` file and environme
 variables, providing a structured dictionary for easy access throughout the application. 
 """
 
+# === Standard Libraries ===
 import os
+import sys
+import configparser
 from dotenv import load_dotenv
-load_dotenv()
+
+# === Initialization ===
+load_dotenv() # Load environment variables from .env file
 
 def load_config():
     """
     Load configuration settings from 'config.ini' and return them as a dictionary.
-    """
-    import sys
-    import configparser
 
+    Returns:
+    - CONFIG (dict): Dictionary containing configuration settings.
+    """
     # Set the working directory and adjust the system path
     base_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(base_dir)
@@ -30,37 +35,68 @@ def load_config():
 
     # Extract and return configuration variables
     return {
-        "base_dir": base_dir,
-        "ttsurl": config['TTS']['ttsurl'],
-        "charvoice": config.getboolean('TTS', 'charvoice'),
-        "ttsoption": config['TTS']['ttsoption'],
-        "ttsclone": config['TTS']['ttsclone'],
-        "voiceonly": config.getboolean('TTS', 'voiceonly'),
-        "emotions": config.getboolean('EMOTION', 'enabled'),
-        "emotion_model": config['EMOTION']['emotion_model'],
-        "storepath": os.path.join(os.getcwd(), config['EMOTION']['storepath']),
-        "llm_backend": config['LLM']['backend'],
-        "base_url": config['LLM']['base_url'],
-        "api_key": get_api_key(config['LLM']['backend']),
-        "openai_model": config['LLM']['openai_model'],
-        "contextsize": config.getint('LLM', 'contextsize'),
-        "max_tokens": config.getint('LLM', 'max_tokens'),
-        "temperature": config.getfloat('LLM', 'temperature'),
-        "top_p": config.getfloat('LLM', 'top_p'),
-        "seed_llm": config.getint('LLM', 'seed'),
-        "systemprompt": config['LLM']['systemprompt'],
-        "instructionprompt": config['LLM']['instructionprompt'],
-        "charactercard": config['CHAR']['charactercard'],
-        "user_name": config['CHAR']['user_name'],
-        "user_details": config['CHAR']['user_details'],
-        "TOKEN": config['DISCORD']['TOKEN'],
-        "channel_id": config['DISCORD']['channel_id'],
-        "discordenabled": config['DISCORD']['enabled'],
+        "BASE_DIR": base_dir,
+        "CONTROLS": {
+            "controller_name": config['CONTROLS']['controller_name'],
+        },
+        "STT": {
+            "use_server": config.getboolean('STT', 'use_server'),
+            "server_url": config['STT']['server_url'],
+        },
+        "CHAR": {
+            "charactercard": config['CHAR']['charactercard'],
+            "char_name": config['CHAR']['char_name'],
+            "user_name": config['CHAR']['user_name'],
+            "user_details": config['CHAR']['user_details'],
+        },
+        "LLM": {
+            "backend": config['LLM']['backend'],
+            "base_url": config['LLM']['base_url'],
+            "api_key": get_api_key(config['LLM']['backend']),
+            "openai_model": config['LLM']['openai_model'],
+            "contextsize": config.getint('LLM', 'contextsize'),
+            "max_tokens": config.getint('LLM', 'max_tokens'),
+            "temperature": config.getfloat('LLM', 'temperature'),
+            "top_p": config.getfloat('LLM', 'top_p'),
+            "seed": config.getint('LLM', 'seed'),
+            "systemprompt": config['LLM']['systemprompt'],
+            "instructionprompt": config['LLM']['instructionprompt'],
+        },
+        "VISION": {
+            "server_hosted": config.getboolean('VISION', 'server_hosted'),
+            "base_url": config['VISION']['base_url'],
+        },
+        "EMOTION": {
+            "enabled": config.getboolean('EMOTION', 'enabled'),
+            "emotion_model": config['EMOTION']['emotion_model'],
+            "storepath": os.path.join(os.getcwd(), config['EMOTION']['storepath']),
+        },
+        "TTS": {
+            "ttsurl": config['TTS']['ttsurl'],
+            "charvoice": config.getboolean('TTS', 'charvoice'),
+            "ttsoption": config['TTS']['ttsoption'],
+            "ttsclone": config['TTS']['ttsclone'],
+            "voiceonly": config.getboolean('TTS', 'voiceonly'),
+            "is_talking_override": config.getboolean('TTS', 'is_talking_override'),
+            "is_talking": config.getboolean('TTS', 'is_talking'),
+            "global_timer_paused": config.getboolean('TTS', 'global_timer_paused'),
+        },
+        "DISCORD": {
+            "TOKEN": config['DISCORD']['TOKEN'],
+            "channel_id": config['DISCORD']['channel_id'],
+            "enabled": config['DISCORD']['enabled'],
+        },
     }
 
-def get_api_key(llm_backend):
+def get_api_key(llm_backend: str) -> str:
     """
     Retrieves the API key for the specified LLM backend.
+    
+    Parameters:
+    - llm_backend (str): The LLM backend to retrieve the API key for.
+
+    Returns:
+    - api_key (str): The API key for the specified LLM backend.
     """
     # Map the backend to the corresponding environment variable
     backend_to_env_var = {
@@ -79,3 +115,4 @@ def get_api_key(llm_backend):
         raise ValueError(f"API key not found for LLM backend: {llm_backend}")
     
     return api_key
+

@@ -24,22 +24,20 @@ import json
 import requests
 import re
 from datetime import datetime
-import configparser
 import sounddevice as sd
 import numpy as np
 import concurrent.futures
 
 #custom imports
-from module_engineTrainer import train_text_classifier
+from module_config import load_config
 from module_btcontroller import *
 from module_stt import *
 from module_memory import *
 from module_engine import *
 from module_tts import *
-from module_imagesummary import *
-from module_config import *
+from module_imageSummary import *
 
-config = load_config()
+CONFIG = load_config()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Set the working directory to the base directory
@@ -47,40 +45,11 @@ os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
 
-
 # TTS Section
-ttsurl = config['ttsurl']
-charvoice = config['charvoice']
-ttsoption = config['ttsoption']
-ttsclone = config['ttsclone']
-voiceonly = config['voiceonly']
-
-# EMOTION Section
-emotions = config['emotions']
-emotion_model = config['emotion_model']
-storepath = os.path.join(BASE_DIR, config['storepath'])
-
-# LLM Section
-llm_backend = config['llm_backend']
-base_url = config['base_url']
-api_key = config['api_key']
-contextsize = int(config['contextsize'])
-max_tokens = int(config['max_tokens'])
-temperature = float(config['temperature'])
-top_p = float(config['top_p'])
-seed_llm = int(config['seed_llm'])
-systemprompt = config['systemprompt']
-instructionprompt = config['instructionprompt']
+voiceonly = CONFIG['TTS']['voiceonly']
 
 # CHAR Section
-charactercard = config['charactercard']
-user_name = config['user_name']
-user_details = config['user_details']
-
-# Discord Section
-TOKEN = config['TOKEN']
-channel_id = config['channel_id']
-discordenabled = config['discordenabled']
+charactercard = CONFIG['CHAR']['charactercard']
 
 # Global Variables (if needed)
 global_source_image = None
@@ -93,12 +62,6 @@ module_engine = None
 start_time = time.time() #calc time
 stop_event = threading.Event()
 executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
-
-import numpy as np
-import sounddevice as sd
-
-import numpy as np
-import sounddevice as sd
 
 def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normalize=False):
     """
@@ -141,7 +104,7 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
 #LLM
 def build_prompt(user_prompt):
     
-    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue, voiceonly, systemprompt, instructionprompt
+    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue, voiceonly, instructionprompt
     
     now = datetime.now() # Current date and time
     date = now.strftime("%m/%d/%Y")
@@ -195,37 +158,37 @@ def build_prompt(user_prompt):
         module_engine = ""
 
     promptsize = (
-        f"System: {systemprompt}\n\n"
-        f"### Instruction: {instructionprompt}\n"
+        f"System: {CONFIG['LLM']['systemprompt']}\n\n"
+        f"### Instruction: {CONFIG['LLM']['instructionprompt']}\n"
         f"{dtg}\n"
-        f"User is: {user_details}\n\n"
+        f"User is: {CONFIG['CHAR']['user_details']}\n\n"
         f"{charactercard}\n"
         f"Past Memories which may be helpfull to answer {char_name}: {past}\n\n"
         f"{history}\n"
         #f"{module_engine}"
-        f"Respond to {user_name}'s message of: {userInput}\n"
+        f"Respond to {CONFIG['CHAR']['user_name']}'s message of: {userInput}\n"
         f"{module_engine}"
         f"### Response: {char_name}: "
     )
     #Calc how much space is avail for chat history
     remaining = token_count(promptsize).get('length', 0)
-    memallocation = int(contextsize - remaining)
+    memallocation = int(CONFIG['LLM']['contextsize'] - remaining)
     history = remember_shortterm_tokenlim(memallocation)
 
     prompt = (
-        f"System: {systemprompt}\n\n"
-        f"### Instruction: {instructionprompt}\n"
+        f"System: {CONFIG['LLM']['systemprompt']}\n\n"
+        f"### Instruction: {CONFIG['LLM']['instructionprompt']}\n"
         f"{dtg}\n"
-        f"User is: {user_details}\n\n"
+        f"User is: {CONFIG['CHAR']['user_details']}\n\n"
         f"{charactercard}\n"
         f"Past Memories which may be helpfull to answer {char_name}: {past}\n\n"
         f"{history}\n"
-        f"Respond to {user_name}'s message of: {userInput}\n"
+        f"Respond to {CONFIG['CHAR']['user_name']}'s message of: {userInput}\n"
         f"{module_engine}"
         f"### Response: {char_name}: "
     )
-    prompt = prompt.replace("{user}", user_name) 
-    prompt = prompt.replace("{char}", char_name)
+    prompt = prompt.replace("{user}", CONFIG['CHAR']['user_name']) 
+    prompt = prompt.replace("{char}", CONFIG['CHAR']['user_name'])
     prompt = prompt.replace("\\\\", "\\") 
     prompt = prompt.replace("\\n", "\n") 
     prompt = prompt.replace("\\'", "'")    
@@ -251,43 +214,43 @@ def get_completion(prompt, istext):
     # Set the header for the request
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
     }
 
     # Handle OpenAI backend
-    if llm_backend == "openai":
-        url = f"{base_url}/v1/chat/completions"
+    if CONFIG['LLM']['llm_backend'] == "openai":
+        url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
         data = {
             "model": config['openai_model'],  # GPT-4 or GPT-3.5-turbo
             "messages": [
-                {"role": "system", "content": systemprompt},
+                {"role": "system", "content": CONFIG['LLM']['systemprompt']},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p
+            "max_tokens": CONFIG['LLM']['max_tokens'],
+            "temperature": CONFIG['LLM']['temperature'],
+            "top_p": CONFIG['LLM']['top_p']
         }
     # Handle Ooba backend
-    elif llm_backend == "ooba":
-        url = f"{base_url}/v1/completions"
+    elif CONFIG['LLM']['llm_backend'] == "ooba":
+        url = f"{CONFIG['LLM']['base_url']}/v1/completions"
         data = {
             "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "seed": seed_llm
+            "max_tokens": CONFIG['LLM']['max_tokens'],
+            "temperature": CONFIG['LLM']['temperature'],
+            "top_p": CONFIG['LLM']['top_p'],
+            "seed": CONFIG['LLM']['seed']
         }
     # Handle Tabby backend
-    elif llm_backend == "tabby":
-        url = f"{base_url}/v1/completions"
+    elif CONFIG['LLM']['llm_backend'] == "tabby":
+        url = f"{CONFIG['LLM']['base_url']}/v1/completions"
         data = {
             "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p
+            "max_tokens": CONFIG['LLM']['max_tokens'],
+            "temperature": CONFIG['LLM']['temperature'],
+            "top_p": CONFIG['LLM']['top_p']
         }
     else:
-        raise ValueError(f"Unsupported LLM backend: {llm_backend}")
+        raise ValueError(f"Unsupported LLM backend: {CONFIG['LLM']['llm_backend']}")
 
     # Send the request and get the response
     response = requests.post(url, headers=headers, data=json.dumps(data))
@@ -312,10 +275,10 @@ def extract_text(json_response, picture):
     try:
         # Determine the correct field for text extraction based on response structure
         if 'choices' in json_response:
-            if llm_backend == "openai":
+            if CONFIG['LLM']['llm_backend'] == "openai":
                 # For OpenAI's chat.completion API
                 text_content = json_response['choices'][0]['message']['content']
-            elif llm_backend == "ooba" or llm_backend == "tabby":
+            elif CONFIG['LLM']['llm_backend'] == "ooba" or CONFIG['LLM']['llm_backend'] == "tabby":
                 # For other backends like Ooba or Tabby
                 text_content = json_response['choices'][0]['text']
         else:
@@ -336,11 +299,10 @@ def extract_text(json_response, picture):
         return f"Text content could not be found. Error: {str(error)}"
 
 def stop_generation():
-    global base_url, api_key
-    url = f"{base_url}/v1/internal/stop-generation"
+    url = f"{CONFIG['LLM']['base_url']}/v1/internal/stop-generation"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
     }
 
     response = requests.post(url, headers=headers)
@@ -353,21 +315,21 @@ def token_count(text):
     """
 
     # Check the LLM backend and set the URL accordingly
-    if llm_backend == "openai":
+    if CONFIG['LLM']['llm_backend'] == "openai":
         # OpenAI doesn’t have a direct token count endpoint; you must estimate using tiktoken or similar tools.
         # This implementation assumes you calculate the token count locally.
         from tiktoken import encoding_for_model
         enc = encoding_for_model(config['openai_model'])
         length = {"length": len(enc.encode(text))}
         return length
-    elif llm_backend == "ooba":
-        url = f"{base_url}/v1/internal/token-count"
-    elif llm_backend == "tabby":
-        url = f"{base_url}/v1/token/encode"
+    elif CONFIG['LLM']['llm_backend'] == "ooba":
+        url = f"{CONFIG['LLM']['base_url']}/v1/internal/token-count"
+    elif CONFIG['LLM']['llm_backend'] == "tabby":
+        url = f"{CONFIG['LLM']['base_url']}/v1/token/encode"
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
     }
     data = {
         "text": text
@@ -383,20 +345,20 @@ def token_count(text):
 
 def chat_completions_with_character(messages, mode, character):
 
-    if llm_backend == "openai":
-        url = f"{base_url}/v1/chat/completions"
+    if CONFIG['LLM']['llm_backend'] == "openai":
+        url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
+            "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
         }
         data = {
             "model": config['openai_model'],
             "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p
+            "temperature": CONFIG['LLM']['temperature'],
+            "top_p": CONFIG['LLM']['top_p']
         }
-    elif llm_backend == "ooba" or llm_backend == "tabby":
-        url = f"{base_url}/v1/chat/completions"
+    elif CONFIG['LLM']['llm_backend'] == "ooba" or CONFIG['LLM']['llm_backend'] == "tabby":
+        url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
         headers = {"Content-Type": "application/json"}
         data = {
             "messages": messages,
@@ -460,7 +422,7 @@ def handle_stt_message(message):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: {reply}")
         # Stream TTS audio to speakers
         #print("Fetching TTS audio...")
-        tts_stream = get_tts_stream(reply, ttsurl, ttsclone)  # Send reply text to TTS
+        tts_stream = get_tts_stream(reply, CONFIG['TTS']['ttsurl'], CONFIG['TTS']['ttsclone'])  # Send reply text to TTS
         # Play the audio stream
         #print("Playing TTS audio...")
         play_audio_stream(tts_stream)
@@ -471,7 +433,7 @@ def handle_stt_message(message):
         print(f"Error processing message: {e}")
 
 def wake_word_tts(data):
-    tts_stream = get_tts_stream(data, ttsurl, ttsclone)
+    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsurl'], CONFIG['TTS']['ttsclone'])
     play_audio_stream(tts_stream)
 
 #THREADS
@@ -500,7 +462,7 @@ def start_bt_controller_thread():
 def llm_process(userinput, botresponse):
     threading.Thread(target=longMEM_thread, args=(userinput, botresponse)).start()
     
-    if emotions == True: #set emotion
+    if CONFIG['EMOTION']['enabled'] == True: #set emotion
         threading.Thread(target=set_emotion, args=(botresponse,)).start()
 
     return botresponse
@@ -538,7 +500,7 @@ def read_character_content(charactercard):
             dtg2 = f"{date} at {time}\n"
 
             placeholders = {
-                "{{user}}": user_name,
+                "{{user}}": CONFIG['CHAR']['user_name'],
                 "{{char}}": char_name,
                 "{{time}}": dtg2
             }

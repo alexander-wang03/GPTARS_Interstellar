@@ -1,32 +1,38 @@
+"""
+module_memory.py
+
+Manages memory functions for the GPTARS system, including long-term and short-term memory handling, memory injections, 
+character data management, and token count calculations. 
+
+This module ensures that the GPTARS system maintains contextual and historical knowledge during interactions.
+"""
+
+# === Standard Libraries ===
 import os
-from transformers import pipeline
+import sys
+import re
 import json
+import requests
 from typing import List
 from datetime import datetime
-import re
+from transformers import pipeline
 from hyperdb import *
 from memory.hyperdb import *
-import json
-import configparser
-import sys
 
-from module_config import get_api_key
+# === Custom Modules ===
+from module_config import load_config
 
+# === Constants and Globals ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Set the working directory to the base directory
 os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
 
-config = configparser.ConfigParser()
-config.read('config.ini')
+CONFIG = load_config()
 
 global hyper_db
 global memory_db_path
 longMEM_Use = True
-llm_backend = config['LLM']['backend']
-api_key = get_api_key(llm_backend)
-base_url = config['LLM']['base_url']
 
 #MEMORY FUNCTIONS
 def remember(query):
@@ -205,7 +211,7 @@ def summarize_text(article, max_len=250, min_len=0, do_sample=False):
 def read_character_content():
     global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
 
-    charactercard = config['CHAR']['charactercard']
+    charactercard = CONFIG['CHAR']['charactercard']
     try:
         with open(charactercard, "r") as file:
             content = file.read()
@@ -230,7 +236,7 @@ def read_character_content():
 
             # Populate the global variables
             global user_name
-            user_name = config['CHAR']['user_name']
+            user_name = CONFIG['CHAR']['user_name']
 
             char_greeting = char_greeting.replace("{{user}}", user_name)
             char_greeting = char_greeting.replace("{{char}}", char_name)
@@ -257,21 +263,21 @@ def token_count(text):
     """
 
     # Check the LLM backend and set the URL accordingly
-    if llm_backend == "openai":
+    if CONFIG['LLM']['backend'] == "openai":
         # OpenAI doesn’t have a direct token count endpoint; you must estimate using tiktoken or similar tools.
         # This implementation assumes you calculate the token count locally.
         from tiktoken import encoding_for_model
-        enc = encoding_for_model(config['LLM']['openai_model'])
+        enc = encoding_for_model(CONFIG['LLM']['openai_model'])
         length = {"length": len(enc.encode(text))}
         return length
-    elif llm_backend == "ooba":
-        url = f"{base_url}/v1/internal/token-count"
-    elif llm_backend == "tabby":
-        url = f"{base_url}/v1/token/encode"
+    elif CONFIG['LLM']['backend'] == "ooba":
+        url = f"{CONFIG['LLM']['base_url']}/v1/internal/token-count"
+    elif CONFIG['LLM']['backend'] == "tabby":
+        url = f"{CONFIG['LLM']['base_url']}/v1/token/encode"
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
     }
     data = {
         "text": text
@@ -287,7 +293,7 @@ def token_count(text):
         
 read_character_content()
 #LOAD
-memory_db_path = os.path.abspath(f"memory/{config['CHAR']['char_name']}.pickle.gz")
+memory_db_path = os.path.abspath(f"memory/{CONFIG['CHAR']['char_name']}.pickle.gz")
 load_longMem(memory_db_path)
 
 #inject any memories needed
