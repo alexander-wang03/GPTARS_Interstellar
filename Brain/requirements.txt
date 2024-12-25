@@ -22,3 +22,4 @@ libsox-fmt-all
 #alsa-utils
 portaudio19-dev
 adafruit-pca9685
+azure-cognitiveservices-speech

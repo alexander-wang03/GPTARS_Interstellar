@@ -422,7 +422,7 @@ def handle_stt_message(message):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: {reply}")
         # Stream TTS audio to speakers
         #print("Fetching TTS audio...")
-        tts_stream = get_tts_stream(reply, CONFIG['TTS']['ttsurl'], CONFIG['TTS']['ttsclone'])  # Send reply text to TTS
+        tts_stream = get_tts_stream(reply, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])  # Send reply text to TTS
         # Play the audio stream
         #print("Playing TTS audio...")
         play_audio_stream(tts_stream)
@@ -433,7 +433,7 @@ def handle_stt_message(message):
         print(f"Error processing message: {e}")
 
 def wake_word_tts(data):
-    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsurl'], CONFIG['TTS']['ttsclone'])
+    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
     play_audio_stream(tts_stream)
 
 #THREADS

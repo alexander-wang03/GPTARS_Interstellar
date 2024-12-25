@@ -1,22 +1,16 @@
 """
 module_tts.py
 
-This module handles Text-to-Speech (TTS) functionality for GPTARS. 
+Text-to-Speech (TTS) Module for GPTARS Application.
 
-It supports both local and server-based TTS systems to convert text into audio streams, 
-integrating seamlessly with other modules.
+This module handles TTS functionality, supporting both local and server-based systems
+to convert text into audio streams. 
 """
 
-import time
+# === Standard Libraries ===
 import requests
 import os 
 from datetime import datetime
-
-from module_config import load_config
-
-CONFIG = load_config()
-
-start_time = time.time()
 
 def update_tts_settings(ttsurl):
     """
@@ -52,18 +46,33 @@ def update_tts_settings(ttsurl):
     except Exception as e:
         print(f"[ERROR] TTS update failed: {e}")
 
-def get_tts_stream(text_to_read, ttsurl, ttsclone):
+def get_tts_stream(text, ttsoption, ttsurl, charvoice, ttsclone):
+    """
+    Generate TTS audio stream for the given text using the specified TTS system.
+
+    Parameters:
+    - text (str): The text to convert into speech.
+    - ttsoption (str): The TTS system to use (local or server-based).
+    - ttsurl (str): The base URL of the TTS server (for server-based TTS).
+    - charvoice (bool): Flag indicating whether to use character voice for TTS.
+    - ttsclone (str): The TTS speaker/voice configuration.
+    """
     try:
         chunk_size = 1024
 
-        if CONFIG['TTS']['charvoice'] and CONFIG['TTS']['ttsoption'] == "local":
-            command = f'espeak-ng -s 140 -p 50 -v en-us+m3 "{text_to_read}" --stdout | sox -t wav - -c 1 -t wav - gain 0.0 reverb 30 highpass 500 lowpass 3000 | aplay'
+        # Local TTS generation using `espeak-ng`
+        if ttsoption == "local" and charvoice:
+            command = (
+                f'espeak-ng -s 140 -p 50 -v en-us+m3 "{text}" --stdout | '
+                f'sox -t wav - -c 1 -t wav - gain 0.0 reverb 30 highpass 500 lowpass 3000 | aplay'
+            )
             os.system(command)
 
-        elif CONFIG['TTS']['charvoice'] and CONFIG['TTS']['ttsoption'] == "xttsv2":
+        # Server-based TTS generation using `xttsv2`
+        elif ttsoption == "xttsv2" and charvoice:
             full_url = f"{ttsurl}/tts_stream"
             params = {
-                'text': text_to_read,
+                'text': text,
                 'speaker_wav': ttsclone,
                 'language': "en"
             }
@@ -76,15 +85,3 @@ def get_tts_stream(text_to_read, ttsurl, ttsclone):
 
     except Exception as e:
         print(f"Text-to-speech generation failed: {e}")
-
-def talking(switch, start_time, talkinghead_base_url):
-    switchep = f"{switch}_talking"
-    if switch == "start":
-        # requests.get(f"{talkinghead_base_url}/api/talkinghead/{switchep}")
-        start_time = time.time()
-
-    if switch == "stop":
-        # requests.get(f"{talkinghead_base_url}/api/talkinghead/{switchep}")
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Processing Time: {elapsed_time}")

@@ -11,9 +11,14 @@ It allows the bot to respond to messages and mentions in a specified Discord cha
 import discord
 import time
 
+# === Custom Modules ===
+from module_config import load_config
+
+# === Constants and Globals ===
+CONFIG = load_config()
+
 # === Initialization ===
-# Initialize Discord client with appropriate intents
-intents = discord.Intents.default()
+intents = discord.Intents.default() # Initialize Discord client with appropriate intents
 intents.message_content = True
 client = discord.Client(intents=intents)
 
@@ -27,12 +32,12 @@ async def on_ready():
     print(f"Logged in as {client.user}")
     
     # Fetch the channel by its ID
-    channel = client.get_channel(channel_id)  # Replace `channel_id` with the actual channel ID
+    channel = client.get_channel(CONFIG['DISCORD']['channel_id'])  # Replace `channel_id` with the actual channel ID
     if channel:
         await channel.send(char_greeting)
-        print(f"Greeting sent to channel: {channel_id}")
+        print(f"Greeting sent to channel: {CONFIG['DISCORD']['channel_id']}")
     else:
-        print(f"Channel with ID {channel_id} not found.")
+        print(f"Channel with ID {CONFIG['DISCORD']['channel_id']} not found.")
 
 # Event: Respond to messages in Discord
 @client.event

@@ -72,9 +72,9 @@ def load_config():
             "storepath": os.path.join(os.getcwd(), config['EMOTION']['storepath']),
         },
         "TTS": {
+            "ttsoption": config['TTS']['ttsoption'],
             "ttsurl": config['TTS']['ttsurl'],
             "charvoice": config.getboolean('TTS', 'charvoice'),
-            "ttsoption": config['TTS']['ttsoption'],
             "ttsclone": config['TTS']['ttsclone'],
             "voiceonly": config.getboolean('TTS', 'voiceonly'),
             "is_talking_override": config.getboolean('TTS', 'is_talking_override'),

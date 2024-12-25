@@ -93,7 +93,7 @@ def transcribe_command():
     """
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
     try:
-        if use_server_stt:
+        if CONFIG['STT']['use_server']:
             return transcribe_with_server()
         else:
             return transcribe_with_vosk()
