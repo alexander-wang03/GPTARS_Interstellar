@@ -22,7 +22,6 @@ from module_tts import update_tts_settings
 from module_config import load_config
 from module_btcontroller import *
 from module_engine import *
-from module_imageSummary import *
 from module_main import handle_stt_message, wake_word_tts, start_stt_thread, start_bt_controller_thread
 
 # === Constants and Globals ===

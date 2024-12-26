@@ -7,7 +7,7 @@ This module handles image capture and caption generation, supporting both server
 and on-device processing modes. It utilizes the BLIP model for on-device inference and 
 communicates with a server endpoint for remote processing.
 """
-
+# === Standard Libraries ===
 import subprocess
 import traceback
 from PIL import Image
@@ -15,9 +15,11 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from io import BytesIO
 import requests
 import torch
+
+# === Custom Modules ===
 from module_config import load_config
 
-# Load configuration
+# === Constants and Globals ===
 CONFIG = load_config()
 
 # Device configuration
@@ -27,25 +29,29 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 processor = None
 model = None
 
+# === Helper Functions ===
 def initialize_blip_model():
     """
     Initialize the BLIP model and processor for on-device vision processing.
     """
     global processor, model
     if processor is None or model is None:
-        print("Initializing BLIP model and processor...")
+        print("[INFO] Initializing BLIP model and processor...")
         processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
         model.to(device)
         model = torch.quantization.quantize_dynamic(
             model, {torch.nn.Linear}, dtype=torch.qint8
         )
-        print("BLIP model and processor initialized.")
+        print("[INFO] BLIP model and processor initialized.")
 
 
 def capture_image() -> BytesIO:
     """
     Capture an image using libcamera-still and return it as a BytesIO object.
+
+    Returns:
+    - BytesIO: Captured image in memory.
     """
     try:
         # Adjust resolution based on whether the server is hosted or on-device
@@ -66,13 +72,18 @@ def capture_image() -> BytesIO:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error capturing image: {e}")
     except Exception as e:
-        print("Error occurred during image capture:", traceback.format_exc())
+        print("[ERROR] Image capture failed:", traceback.format_exc())
         raise e
-
 
 def send_image_to_server(image_bytes: BytesIO) -> str:
     """
     Send an image to the server for captioning and return the generated caption.
+
+    Parameters:
+    - image_bytes (BytesIO): The image in memory to be sent.
+
+    Returns:
+    - str: Generated caption from the server.
     """
     try:
         files = {'image': ('image.jpg', image_bytes, 'image/jpeg')}
@@ -84,13 +95,16 @@ def send_image_to_server(image_bytes: BytesIO) -> str:
             error_message = response.json().get('error', 'Unknown error')
             raise RuntimeError(f"Server error ({response.status_code}): {error_message}")
     except Exception as e:
-        print("Error sending image to server:", traceback.format_exc())
+        print("[ERROR] Failed to send image to server:", traceback.format_exc())
         raise e
 
-
+# === Main Functions ===
 def describe_camera_view() -> str:
     """
     Capture an image and process it either on-device or by sending it to the server.
+
+    Returns:
+    - str: Caption describing the captured image.
     """
     try:
         # Capture the image

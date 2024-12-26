@@ -35,7 +35,6 @@ from module_stt import *
 from module_memory import *
 from module_engine import check_for_module
 from module_tts import get_tts_stream
-from module_imageSummary import *
 
 CONFIG = load_config()
 
