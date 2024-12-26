@@ -8,7 +8,9 @@ and voice command handling. It supports custom callbacks to trigger actions upon
 detecting speech or specific keywords.
 """
 
+# === Standard Libraries ===
 import os
+import sys
 import random
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
@@ -18,29 +20,23 @@ import requests
 from datetime import datetime
 from io import BytesIO
 import wave
-import sys
 import numpy as np
 import json
 
+# === Custom Modules ===
 from module_config import load_config
 
+# === Constants and Globals ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Set the working directory to the base directory
 os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
 
 CONFIG = load_config()
 
-vosk_model = None
-if not CONFIG['STT']['use_server']:
-    VOSK_MODEL_PATH = os.path.join(BASE_DIR, "vosk-model-small-en-us-0.15")
-    if not os.path.exists(VOSK_MODEL_PATH):
-        raise FileNotFoundError("Vosk model not found. Download from: https://alphacephei.com/vosk/models")
-    vosk_model = Model(VOSK_MODEL_PATH)
-
-# List of TARS-style responses
-tars_responses = [
+SAMPLE_RATE = 16000
+WAKE_PHRASE = "hey tar"
+TARS_RESPONSES = [
     "Yes? What do you need?",
     "Ready and listening.",
     "At your service.",
@@ -53,85 +49,18 @@ tars_responses = [
     "Online and awaiting your command."
 ]
 
-# Constants
-WAKE_PHRASE = "hey tar"
-SAMPLE_RATE = 16000
-
-
-# Global running flag and callback
+# Globals
+vosk_model = None
 running = False
 message_callback = None
 wakeword_callback = None
 
-def set_wakewordtts_callback(callback_function):
-    """
-    Set the callback function to handle wake word TTS responses.
-    """
-    global wakeword_callback
-    wakeword_callback = callback_function
-
-def detect_wake_word():
-    """
-    Continuously listens for the wake word using Pocketsphinx.
-    """
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{current_time}] TARS: Idle...")
-
-    speech = LiveSpeech(lm=False, keyphrase=WAKE_PHRASE, kws_threshold=1e-20)
-    for phrase in speech:
-        #print(f"Detected phrase: {phrase.hypothesis()}")
-        if WAKE_PHRASE in phrase.hypothesis().lower():
-            response = random.choice(tars_responses)
-            print(f"[{current_time}] TARS: {response}")
-            if wakeword_callback:
-                wakeword_callback(response)
-            return True
-
-def transcribe_command():
-    """
-    Transcribes a command using either the local Vosk model or the server.
-    """
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
-    try:
-        if CONFIG['STT']['use_server']:
-            return transcribe_with_server()
-        else:
-            return transcribe_with_vosk()
-    except Exception as e:
-        print(f"[ERROR] Transcription failed: {e}")
-
-
-def transcribe_with_vosk():
-    """
-    Transcribes audio locally using Vosk.
-    """
-    recognizer = None
-    try:
-        recognizer = KaldiRecognizer(vosk_model, SAMPLE_RATE)
-        #print("KaldiRecognizer initialized successfully.")
-
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
-            max_duration_frames = 50  # Limit maximum recording duration (~12.5 seconds)
-            total_frames = 0
-
-            while total_frames < max_duration_frames:  # Prevent infinite loops
-                data, _ = stream.read(4000)
-                if recognizer.AcceptWaveform(data.tobytes()):
-                    result = recognizer.Result()
-                    #print(f"[DEBUG] Recognized: {result}")
-                    if message_callback:
-                        message_callback(result)
-                    return result
-                total_frames += 1
-            print("[ERROR] No valid transcription within duration limit.")
-            return None
-
-    except Exception as e:
-        print(f"[ERROR] Error during local transcription: {e}")
-    finally:
-        if recognizer:
-            del recognizer
-
+# === Initialization ===
+if not CONFIG['STT']['use_server']:
+    VOSK_MODEL_PATH = os.path.join(BASE_DIR, "vosk-model-small-en-us-0.15")
+    if not os.path.exists(VOSK_MODEL_PATH):
+        raise FileNotFoundError("Vosk model not found. Download from: https://alphacephei.com/vosk/models")
+    vosk_model = Model(VOSK_MODEL_PATH)
 
 def measure_background_noise():
     """
@@ -163,6 +92,81 @@ def measure_background_noise():
     #print(f"LOAD: Measured background noise: {background_noise:.2f}")
     #print(f"LOAD: Silence threshold set to: {silence_threshold:.2f}")
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Silence threshold set to: {silence_threshold:.2f}")
+
+# === Wake Word Detection ===
+def set_wakewordtts_callback(callback_function):
+    """
+    Set the callback function to handle wake word TTS responses.
+
+    Parameters:
+    - callback_function (function): The function to be called when the wake word is detected.
+    """
+    global wakeword_callback
+    wakeword_callback = callback_function
+
+def detect_wake_word():
+    """
+    Continuously listens for the wake word using Pocketsphinx.
+    """
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{current_time}] TARS: Idle...")
+
+    speech = LiveSpeech(lm=False, keyphrase=WAKE_PHRASE, kws_threshold=1e-20)
+    for phrase in speech:
+        #print(f"Detected phrase: {phrase.hypothesis()}")
+        if WAKE_PHRASE in phrase.hypothesis().lower():
+            response = random.choice(TARS_RESPONSES)
+            print(f"[{current_time}] TARS: {response}")
+            if wakeword_callback:
+                wakeword_callback(response)
+            return True
+
+def transcribe_command():
+    """
+    Transcribes a command using either the local Vosk model or the server.
+    """
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
+    try:
+        if CONFIG['STT']['use_server']:
+            return transcribe_with_server()
+        else:
+            return transcribe_with_vosk()
+    except Exception as e:
+        print(f"[ERROR] Transcription failed: {e}")
+
+def transcribe_with_vosk():
+    """
+    Transcribes audio locally using Vosk.
+
+    Returns:
+    - str: The recognized text.
+    """
+    recognizer = None
+    try:
+        recognizer = KaldiRecognizer(vosk_model, SAMPLE_RATE)
+        #print("KaldiRecognizer initialized successfully.")
+
+        with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
+            max_duration_frames = 50  # Limit maximum recording duration (~12.5 seconds)
+            total_frames = 0
+
+            while total_frames < max_duration_frames:  # Prevent infinite loops
+                data, _ = stream.read(4000)
+                if recognizer.AcceptWaveform(data.tobytes()):
+                    result = recognizer.Result()
+                    #print(f"[DEBUG] Recognized: {result}")
+                    if message_callback:
+                        message_callback(result)
+                    return result
+                total_frames += 1
+            print("[ERROR] No valid transcription within duration limit.")
+            return None
+
+    except Exception as e:
+        print(f"[ERROR] Error during local transcription: {e}")
+    finally:
+        if recognizer:
+            del recognizer
 
 def transcribe_with_server():
     """
@@ -268,6 +272,9 @@ def transcribe_with_server():
 def start_stt(stop_event: Event = None):
     """
     Start the voice assistant. Listens for wake word and transcribes commands.
+
+    Parameters:
+    - stop_event (Event): An optional event to signal stopping the voice assistant.
     """
     global running
     running = True
@@ -298,6 +305,9 @@ def stop_stt():
 def set_message_callback(callback):
     """
     Set the callback function to handle recognized messages.
+
+    Parameters:
+    - callback (function): The function to be called when a message is recognized.
     """
     global message_callback
     message_callback = callback

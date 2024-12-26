@@ -27,18 +27,18 @@ import concurrent.futures
 from module_config import load_config
 from module_btcontroller import *
 from module_stt import *
-from module_memory import get_longterm_memory, write_longterm_memory, get_shortterm_memories_tokenlimit
+from module_memory import get_longterm_memory, write_longterm_memory, get_shortterm_memories_tokenlimit, token_count
 from module_engine import check_for_module
 from module_tts import get_tts_stream
 from module_vision import get_image_caption_from_base64
 
-CONFIG = load_config()
-
+# === Constants and Globals ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Set the working directory to the base directory
 os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
+
+CONFIG = load_config()
 
 # TTS Section
 voiceonly = CONFIG['TTS']['voiceonly']
@@ -57,46 +57,118 @@ start_time = time.time() #calc time
 stop_event = threading.Event()
 executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
 
-def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normalize=False):
+# === Threads ===
+def start_stt_thread():
     """
-    Play the audio stream through speakers using SoundDevice with volume/gain adjustment.
-    
-    Parameters:
-    - tts_stream: Stream of audio data in chunks.
-    - samplerate: The sample rate of the audio data.
-    - channels: The number of audio channels (e.g., 1 for mono, 2 for stereo).
-    - gain: A multiplier for adjusting the volume. Default is 1.0 (no change).
-    - normalize: Whether to normalize the audio to use the full dynamic range.
+    Wrapper to start the STT functionality in a thread.
     """
     try:
-        with sd.OutputStream(samplerate=samplerate, channels=channels, dtype='int16') as stream:
-            for chunk in tts_stream:
-                if chunk:
-                    # Convert bytes to int16 using numpy
-                    audio_data = np.frombuffer(chunk, dtype='int16')
-                    
-                    # Normalize the audio (if enabled)
-                    if normalize:
-                        max_value = np.max(np.abs(audio_data))
-                        if max_value > 0:
-                            audio_data = audio_data / max_value * 32767
-                    
-                    # Apply gain adjustment
-                    audio_data = np.clip(audio_data * gain, -32768, 32767).astype('int16')
-
-                    # Write the adjusted audio data to the stream
-                    stream.write(audio_data)
-                else:
-                    print("Received empty chunk.")
-            
-            # Trigger the transcription process after playback
-            transcribe_command()  # go back to listening for voice (non wake word)
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Starting STT thread...")
+        while not stop_event.is_set():
+            start_stt()
     except Exception as e:
-        print(f"Error during audio playback: {e}")
+        print(f"Error in STT thread: {e}")
 
-#LLM
-def build_prompt(user_prompt):
+def start_bt_controller_thread():
+    """
+    Wrapper to start the BT Controller functionality in a thread.
+    """
+    try:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Starting BT Controller thread...")
+        while not stop_event.is_set():
+            start_controls()
+    except Exception as e:
+        print(f"Error in BT Controller thread: {e}")
+
+# === Core Functions ===
+def extract_text(json_response, picture):
+    """
+    Extracts text from the JSON response. Handles OpenAI's chat.completion and other structures.
+
+    Parameters:
+    - json_response (dict): The JSON response from the LLM backend.
+    - picture (bool): Whether the response contains a picture or not.
+
+    Returns:
+    - str: The extracted text content from the response.
+    """
+    global char_name
     
+    try:
+        # Determine the correct field for text extraction based on response structure
+        if 'choices' in json_response:
+            if CONFIG['LLM']['llm_backend'] == "openai":
+                # For OpenAI's chat.completion API
+                text_content = json_response['choices'][0]['message']['content']
+            elif CONFIG['LLM']['llm_backend'] == "ooba" or CONFIG['LLM']['llm_backend'] == "tabby":
+                # For other backends like Ooba or Tabby
+                text_content = json_response['choices'][0]['text']
+        else:
+            raise KeyError("Invalid response format: 'choices' key not found.")
+
+        # Clean up the text
+        cleaned_text = re.sub(r"\s{2,}", " ", text_content.strip())  # Collapse multiple spaces
+        cleaned_text = re.sub(r"<\|.*?\|>", "", cleaned_text, flags=re.DOTALL)  # Remove <|...|> tags
+        
+        if not picture:
+            # Additional cleanup for non-picture responses
+            cleaned_text = re.sub(rf"{re.escape(char_name)}:\s*", "", cleaned_text)  # Remove character name prefix
+            cleaned_text = re.sub(r"\n\s*\n", "\n", cleaned_text).strip()  # Remove empty lines
+
+        return cleaned_text
+
+    except (KeyError, IndexError, TypeError) as error:
+        return f"Text content could not be found. Error: {str(error)}"
+
+def set_emotion(text_to_read):
+    """
+    Function to set the emotion of the character based on the text generated by the AI.
+
+    Parameters:
+    - text_to_read (str): The text generated by the AI.
+    """
+    from transformers import pipeline
+    
+    sizecheck = token_count(text_to_read)
+    if 'length' in sizecheck:
+        value_to_convert = sizecheck['length']
+    
+    if isinstance(value_to_convert, (int, float)):
+        if value_to_convert <= 511:
+            classifier = pipeline(task="text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
+            model_outputs = classifier(text_to_read)
+            emotion = max(model_outputs[0], key=lambda x: x['score'])['label']
+            
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Emotion {emotion}")
+
+def llm_process(userinput, botresponse):
+    """
+    Process the user input and bot response for various tasks.
+
+    Parameters:
+    - userinput (str): The user input text.
+    - botresponse (str): The bot response text.
+
+    Returns:
+    - str: The processed bot response
+    """
+    threading.Thread(target=write_longterm_memory, args=(userinput, botresponse)).start()
+    
+    if CONFIG['EMOTION']['enabled'] == True: #set emotion
+        threading.Thread(target=set_emotion, args=(botresponse,)).start()
+
+    return botresponse
+
+def build_prompt(user_prompt):
+    """
+    Build the prompt structure for the Large Language Model (LLM) backend.
+
+    Parameters:
+    - user_prompt (str): The user's input prompt.
+
+    Returns:
+    - str: The formatted prompt for the LLM backend.
+    """
     global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue, voiceonly
     
     now = datetime.now() # Current date and time
@@ -196,10 +268,14 @@ def build_prompt(user_prompt):
 def get_completion(prompt, istext):
     """
     Get the completion from the LLM backend.
-    """
 
-    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
-    
+    Parameters:
+    - prompt (str): The prompt to send to the LLM backend.
+    - istext (str): Whether the prompt is text or not.
+
+    Returns:
+    - str: The generated completion
+    """
     # Check if the prompt is text or not
     if istext == "True":
         prompt = build_prompt(prompt)
@@ -259,139 +335,76 @@ def get_completion(prompt, istext):
 
     return(text_to_read)
 
-def extract_text(json_response, picture):
-    """
-    Extracts text from the JSON response. Handles OpenAI's chat.completion and other structures.
-    """
-    global char_name
-    
-    try:
-        # Determine the correct field for text extraction based on response structure
-        if 'choices' in json_response:
-            if CONFIG['LLM']['llm_backend'] == "openai":
-                # For OpenAI's chat.completion API
-                text_content = json_response['choices'][0]['message']['content']
-            elif CONFIG['LLM']['llm_backend'] == "ooba" or CONFIG['LLM']['llm_backend'] == "tabby":
-                # For other backends like Ooba or Tabby
-                text_content = json_response['choices'][0]['text']
-        else:
-            raise KeyError("Invalid response format: 'choices' key not found.")
-
-        # Clean up the text
-        cleaned_text = re.sub(r"\s{2,}", " ", text_content.strip())  # Collapse multiple spaces
-        cleaned_text = re.sub(r"<\|.*?\|>", "", cleaned_text, flags=re.DOTALL)  # Remove <|...|> tags
-        
-        if not picture:
-            # Additional cleanup for non-picture responses
-            cleaned_text = re.sub(rf"{re.escape(char_name)}:\s*", "", cleaned_text)  # Remove character name prefix
-            cleaned_text = re.sub(r"\n\s*\n", "\n", cleaned_text).strip()  # Remove empty lines
-
-        return cleaned_text
-
-    except (KeyError, IndexError, TypeError) as error:
-        return f"Text content could not be found. Error: {str(error)}"
-
-def stop_generation():
-    url = f"{CONFIG['LLM']['base_url']}/v1/internal/stop-generation"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
-    }
-
-    response = requests.post(url, headers=headers)
-    response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
-    print("Stop generation request successful.")
-
-def token_count(text):
-    """
-    Calculate the number of tokens in the given text for a specific LLM backend.
-    """
-
-    # Check the LLM backend and set the URL accordingly
-    if CONFIG['LLM']['llm_backend'] == "openai":
-        # OpenAI doesn’t have a direct token count endpoint; you must estimate using tiktoken or similar tools.
-        # This implementation assumes you calculate the token count locally.
-        from tiktoken import encoding_for_model
-        enc = encoding_for_model(CONFIG['LLM']['openai_model'])
-        length = {"length": len(enc.encode(text))}
-        return length
-    elif CONFIG['LLM']['llm_backend'] == "ooba":
-        url = f"{CONFIG['LLM']['base_url']}/v1/internal/token-count"
-    elif CONFIG['LLM']['llm_backend'] == "tabby":
-        url = f"{CONFIG['LLM']['base_url']}/v1/token/encode"
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
-    }
-    data = {
-        "text": text
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print("Error:", response.status_code, response.text)
-        return None
-
-def chat_completions_with_character(messages, mode, character):
-
-    if CONFIG['LLM']['llm_backend'] == "openai":
-        url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
-        }
-        data = {
-            "model": CONFIG['LLM']['openai_model'],
-            "messages": messages,
-            "temperature": CONFIG['LLM']['temperature'],
-            "top_p": CONFIG['LLM']['top_p']
-        }
-    elif CONFIG['LLM']['llm_backend'] == "ooba" or CONFIG['LLM']['llm_backend'] == "tabby":
-        url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
-        headers = {"Content-Type": "application/json"}
-        data = {
-            "messages": messages,
-            "mode": mode,
-            "character": character
-        }
-
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    return response.json()
-
 def process_completion(text):
+    """
+    Process the user input and generate a response using the Large Language Model (LLM) backend.
+
+    Parameters:
+    - text (str): The user input text.
+
+    Returns:
+    - str: The AI-generated response.
+    """
     # Use the executor directly without 'with' statement
     future = executor.submit(get_completion, text, "True")
     botres = future.result()
     reply = llm_process(text, botres)
     return reply
 
-def extract_after_target(character_response, target_strings):
+def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normalize=False):
     """
-    Extracts text after the first occurrence of any target string in the list items.
+    Play the audio stream through speakers using SoundDevice with volume/gain adjustment.
     
-    :param character_response: List of dictionaries with text content.
-    :param target_strings: List of target strings to search for.
-    :return: Extracted text after the first found target string, with the last two characters removed, or None if not found.
+    Parameters:
+    - tts_stream: Stream of audio data in chunks.
+    - samplerate: The sample rate of the audio data.
+    - channels: The number of audio channels (e.g., 1 for mono, 2 for stereo).
+    - gain: A multiplier for adjusting the volume. Default is 1.0 (no change).
+    - normalize: Whether to normalize the audio to use the full dynamic range.
     """
-    for target_string in target_strings:
-        for item in character_response:
-            text_content = item.get('text', '')
-            position = text_content.find(target_string)
-            if position != -1:
-                # Extract everything after the target string and remove the last two characters
-                extrtext = text_content[position + len(target_string):-1]
-                finalextrtext = extrtext[1:-1] if extrtext.startswith('"') and extrtext.endswith('"') else extrtext.strip('"')
-                return finalextrtext
-    return None
+    try:
+        with sd.OutputStream(samplerate=samplerate, channels=channels, dtype='int16') as stream:
+            for chunk in tts_stream:
+                if chunk:
+                    # Convert bytes to int16 using numpy
+                    audio_data = np.frombuffer(chunk, dtype='int16')
+                    
+                    # Normalize the audio (if enabled)
+                    if normalize:
+                        max_value = np.max(np.abs(audio_data))
+                        if max_value > 0:
+                            audio_data = audio_data / max_value * 32767
+                    
+                    # Apply gain adjustment
+                    audio_data = np.clip(audio_data * gain, -32768, 32767).astype('int16')
 
-#TTS
+                    # Write the adjusted audio data to the stream
+                    stream.write(audio_data)
+                else:
+                    print("Received empty chunk.")
+            
+            # Trigger the transcription process after playback
+            transcribe_command()  # go back to listening for voice (non wake word)
+    except Exception as e:
+        print(f"Error during audio playback: {e}")
+
+# === Callback Functions ===
+def wake_word_tts(data):
+    """
+    Stream audio to speakers when the wake word is detected.
+
+    Parameters:
+    - data (bytes): The audio data to play.
+    """
+    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
+    play_audio_stream(tts_stream)
+
 def handle_stt_message(message):
     """
     Process the recognized message from module_stt and stream audio response to speakers.
+
+    Parameters:
+    - message (str): The recognized message from the Speech-to-Text (STT) module.
     """
     try:
         # Parse the user message
@@ -424,57 +437,3 @@ def handle_stt_message(message):
         print("Invalid JSON format. Could not process user message.")
     except Exception as e:
         print(f"Error processing message: {e}")
-
-def wake_word_tts(data):
-    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
-    play_audio_stream(tts_stream)
-
-#THREADS
-def start_stt_thread():
-    """
-    Wrapper to start the STT functionality in a thread.
-    """
-    try:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Starting STT thread...")
-        while not stop_event.is_set():
-            start_stt()
-    except Exception as e:
-        print(f"Error in STT thread: {e}")
-
-def start_bt_controller_thread():
-    """
-    Wrapper to start the BT Controller functionality in a thread.
-    """
-    try:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Starting BT Controller thread...")
-        while not stop_event.is_set():
-            start_controls()
-    except Exception as e:
-        print(f"Error in BT Controller thread: {e}")
-
-def llm_process(userinput, botresponse):
-    threading.Thread(target=write_longterm_memory, args=(userinput, botresponse)).start()
-    
-    if CONFIG['EMOTION']['enabled'] == True: #set emotion
-        threading.Thread(target=set_emotion, args=(botresponse,)).start()
-
-    return botresponse
-
-#MISC
-def set_emotion(text_to_read):
-    from transformers import pipeline
-    
-    sizecheck = token_count(text_to_read)
-    if 'length' in sizecheck:
-        value_to_convert = sizecheck['length']
-    
-    if isinstance(value_to_convert, (int, float)):
-        if value_to_convert <= 511:
-            classifier = pipeline(task="text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
-            model_outputs = classifier(text_to_read)
-            emotion = max(model_outputs[0], key=lambda x: x['score'])['label']
-            
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Emotion {emotion}")
-      
-        #else:
-            #print("Not Setting Emotion")

@@ -170,3 +170,5 @@ config.ini
 output.wav
 /Brain/config.ini
 Brain/config.ini
+
+.vscode/*
