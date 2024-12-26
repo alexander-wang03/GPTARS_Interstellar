@@ -1,7 +1,7 @@
 """
 module_config.py
 
-Handles the configuration loading for the GPTARS application.
+Configuration Loading Module for GPTARS Application.
 
 This module reads configuration details from the `config.ini` file and environment 
 variables, providing a structured dictionary for easy access throughout the application. 

@@ -1,7 +1,7 @@
 """
 module_stt.py
 
-Handles speech-to-text (STT) processing for the GPTARS system. 
+Speech-to-Text (STT) Module for GPTARS Application.
 
 This module integrates both local and server-based transcription, wake word detection, 
 and voice command handling. It supports custom callbacks to trigger actions upon 
