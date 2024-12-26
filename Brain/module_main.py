@@ -34,7 +34,7 @@ from module_btcontroller import *
 from module_stt import *
 from module_memory import *
 from module_engine import check_for_module
-from module_tts import *
+from module_tts import get_tts_stream
 from module_imageSummary import *
 
 CONFIG = load_config()
@@ -58,7 +58,6 @@ global_reload = None
 is_talking_override = False
 is_talking = False
 global_timer_paused = False
-module_engine = None
 start_time = time.time() #calc time
 stop_event = threading.Event()
 executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
@@ -104,7 +103,7 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
 #LLM
 def build_prompt(user_prompt):
     
-    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue, voiceonly, instructionprompt
+    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue, voiceonly
     
     now = datetime.now() # Current date and time
     date = now.strftime("%m/%d/%Y")
