@@ -15,6 +15,7 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from io import BytesIO
 import requests
 import torch
+import base64
 
 # === Custom Modules ===
 from module_config import load_config
@@ -30,6 +31,7 @@ processor = None
 model = None
 
 # === Helper Functions ===
+
 def initialize_blip_model():
     """
     Initialize the BLIP model and processor for on-device vision processing.
@@ -98,6 +100,31 @@ def send_image_to_server(image_bytes: BytesIO) -> str:
         print("[ERROR] Failed to send image to server:", traceback.format_exc())
         raise e
 
+def get_image_caption_from_base64(base64_str):
+    """
+    Generate a caption for an image encoded in base64.
+
+    Parameters:
+    - base64_str (str): Base64-encoded string of the image.
+
+    Returns:
+    - str
+    """
+    try:
+        # Decode the base64 string into image bytes
+        img_bytes = base64.b64decode(base64_str)
+        raw_image = Image.open(BytesIO(img_bytes)).convert('RGB')
+
+        # Prepare inputs for the BLIP model
+        inputs = processor(raw_image, return_tensors="pt")
+        outputs = model.generate(**inputs, max_new_tokens=100)
+
+        # Decode and return the generated caption
+        caption = processor.decode(outputs[0], skip_special_tokens=True)
+        return caption
+    except Exception as e:
+        raise RuntimeError(f"Error generating caption from base64: {e}")
+
 # === Main Functions ===
 def describe_camera_view() -> str:
     """
@@ -125,3 +152,6 @@ def describe_camera_view() -> str:
     except Exception as e:
         print("Error during image processing:", traceback.format_exc())
         return f"Error: {e}"
+    
+
+

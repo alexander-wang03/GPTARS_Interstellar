@@ -144,3 +144,7 @@ def train_text_classifier(
         train_and_validate_model(df_train, nb_classifier_path, vectorizer_path)
     else:
         print("Script terminated. Run the script again and type 'y' or 's' when prompted.")
+
+# === Script Execution ===
+if __name__ == '__main__':
+    train_text_classifier()

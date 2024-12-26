@@ -155,7 +155,7 @@ dmypy.json
 cython_debug/
 
 #Memory
-TARS.pickle.gz
+dynamic_memory.pickle.gz
 /venv
 TARS.wav
 # PyCharm

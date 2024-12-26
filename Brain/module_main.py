@@ -10,11 +10,6 @@ This file integrates various modules and handles core functionalities, including
 - Handling wake words, speech-to-text (STT), and user interaction workflows.
 - Managing emotion detection, character customization, and system threading for smooth operation.
 """
-
-#Define needed globals
-global start_time
-global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
-
 # === Standard Libraries ===
 import os
 import sys
@@ -32,9 +27,10 @@ import concurrent.futures
 from module_config import load_config
 from module_btcontroller import *
 from module_stt import *
-from module_memory import *
+from module_memory import get_longterm_memory, write_longterm_memory, get_shortterm_memories_tokenlimit
 from module_engine import check_for_module
 from module_tts import get_tts_stream
+from module_vision import get_image_caption_from_base64
 
 CONFIG = load_config()
 
@@ -98,7 +94,6 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
     except Exception as e:
         print(f"Error during audio playback: {e}")
 
-
 #LLM
 def build_prompt(user_prompt):
     
@@ -135,12 +130,12 @@ def build_prompt(user_prompt):
             #socketio.emit('bot_message', {'message': sdpicture})
        
             #dont save tool info to memory
-            #threading.Thread(target=longMEM_tool, args=(module_engine,)).start() 
+            #threading.Thread(target=write_tool_used, args=(module_engine,)).start() 
  
     # Build basic prompt structure
     charactercard = f"\nPersona: {char_persona}\n\nWorld Scenario: {world_scenario}\n\nDialog:\n{example_dialogue}\n"
     dtg = f"Current Date: {date}\nCurrent Time: {time}\n"
-    past = longtermMEMPast(user_prompt) # Get past memories
+    past = get_longterm_memory(user_prompt) # Get past memories
     # Correct the order and logic of replacements clean up memories and past json crap
     past = past.replace("\\\\", "\\")  # Reduce double backslashes to single
     past = past.replace("\\n", "\n")   # Replace escaped newline characters with actual newlines
@@ -171,7 +166,7 @@ def build_prompt(user_prompt):
     #Calc how much space is avail for chat history
     remaining = token_count(promptsize).get('length', 0)
     memallocation = int(CONFIG['LLM']['contextsize'] - remaining)
-    history = remember_shortterm_tokenlim(memallocation)
+    history = get_shortterm_memories_tokenlimit(memallocation)
 
     prompt = (
         f"System: {CONFIG['LLM']['systemprompt']}\n\n"
@@ -219,7 +214,7 @@ def get_completion(prompt, istext):
     if CONFIG['LLM']['llm_backend'] == "openai":
         url = f"{CONFIG['LLM']['base_url']}/v1/chat/completions"
         data = {
-            "model": config['openai_model'],  # GPT-4 or GPT-3.5-turbo
+            "model": CONFIG['LLM']['openai_model'],  # GPT-4 or GPT-3.5-turbo
             "messages": [
                 {"role": "system", "content": CONFIG['LLM']['systemprompt']},
                 {"role": "user", "content": prompt}
@@ -317,7 +312,7 @@ def token_count(text):
         # OpenAI doesn’t have a direct token count endpoint; you must estimate using tiktoken or similar tools.
         # This implementation assumes you calculate the token count locally.
         from tiktoken import encoding_for_model
-        enc = encoding_for_model(config['openai_model'])
+        enc = encoding_for_model(CONFIG['LLM']['openai_model'])
         length = {"length": len(enc.encode(text))}
         return length
     elif CONFIG['LLM']['llm_backend'] == "ooba":
@@ -350,7 +345,7 @@ def chat_completions_with_character(messages, mode, character):
             "Authorization": f"Bearer {CONFIG['LLM']['api_key']}"
         }
         data = {
-            "model": config['openai_model'],
+            "model": CONFIG['LLM']['openai_model'],
             "messages": messages,
             "temperature": CONFIG['LLM']['temperature'],
             "top_p": CONFIG['LLM']['top_p']
@@ -458,7 +453,7 @@ def start_bt_controller_thread():
         print(f"Error in BT Controller thread: {e}")
 
 def llm_process(userinput, botresponse):
-    threading.Thread(target=longMEM_thread, args=(userinput, botresponse)).start()
+    threading.Thread(target=write_longterm_memory, args=(userinput, botresponse)).start()
     
     if CONFIG['EMOTION']['enabled'] == True: #set emotion
         threading.Thread(target=set_emotion, args=(botresponse,)).start()
@@ -483,41 +478,3 @@ def set_emotion(text_to_read):
       
         #else:
             #print("Not Setting Emotion")
-
-def read_character_content(charactercard):
-    global char_name, char_persona, personality, world_scenario, char_greeting, example_dialogue
-
-    try:
-        with open(charactercard, "r") as file:
-            data = json.load(file)
-
-            now = datetime.now()
-            date = now.strftime("%m/%d/%Y")
-            time = now.strftime("%H:%M:%S")
-            dtg = f"Current Date: {date}\nCurrent Time: {time}\n"
-            dtg2 = f"{date} at {time}\n"
-
-            placeholders = {
-                "{{user}}": CONFIG['CHAR']['user_name'],
-                "{{char}}": char_name,
-                "{{time}}": dtg2
-            }
-
-            # Replace placeholders in strings within the dictionary
-            for key, value in data.items():
-                if isinstance(value, str):
-                    for placeholder, replacement in placeholders.items():
-                        data[key] = value.replace(placeholder, replacement)
-
-
-            char_name = data.get("char_name", char_name) or data.get("name", "")
-            char_persona = data.get("char_persona", char_persona) or data.get("description", "")
-            personality = data.get("personality", personality)
-            world_scenario = data.get("world_scenario", world_scenario) or data.get("scenario", "")
-            char_greeting = data.get("char_greeting", char_greeting) or data.get("first_mes", "")
-            example_dialogue = data.get("example_dialogue", example_dialogue) or data.get("mes_example", "")
-
-    except FileNotFoundError:
-        print(f"Character file '{charactercard}' not found.")
-    except Exception as e:
-        print(f"Error: {e}")

@@ -14,7 +14,7 @@ from datetime import datetime
 
 # === Custom Modules ===
 from module_websearch import search_google, search_google_news
-from module_vision import *
+from module_vision import describe_camera_view
 
 # === Constants and Globals ===
 # Pre-trained Models

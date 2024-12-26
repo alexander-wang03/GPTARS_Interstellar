@@ -15,8 +15,7 @@ from datetime import datetime
 import concurrent.futures
 
 # === Custom Modules ===
-from module_memory import read_character_content
-from module_engineTrainer import train_text_classifier
+from module_memory import load_character_attributes
 from module_stt import measure_background_noise, set_message_callback, set_wakewordtts_callback
 from module_tts import update_tts_settings
 from module_config import load_config
@@ -46,9 +45,7 @@ def init_app():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Script running from: {BASE_DIR}")
     #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] DEBUG: init_app() called")
     
-    # Load character data and train classifier
-    read_character_content()
-    train_text_classifier()
+    # Load character data
 
     # Measure background noise
     measure_background_noise()
