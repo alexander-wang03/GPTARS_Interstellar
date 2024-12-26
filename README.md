@@ -7,14 +7,13 @@
 </p>
 
 A recreation of the TARS robot from Interstellar, featuring AI capabilities and servo-driven movement. 
-- See `ENVSETUP.md` for instructions on setting up the software environment.
-- See `WorkingInGitHub.md` for instructions on contributing.
 
 ## Table of Contents
 - [Hardware Requirements](#hardware-requirements)
-- [Printing Specifications](#printing-specifications)
 - [Software Stack](#software-stack)
 - [Build Modifications](#build-modifications)
+- [License](#license)
+- [Contributing](#contributing)
 - [Additional Resources](#additional-resources)
 
 ## Hardware Requirements 
@@ -52,10 +51,12 @@ Everything here is **under development** and is subject to change.
 
 ## Software Stack
 
+See `ENVSETUP.md` for instructions on setting up the software environment.
+
 [![GPTARS Software Demo](https://img.youtube.com/vi/4YObs8BV3Mc/0.jpg)](https://www.youtube.com/watch?v=4YObs8BV3Mc)
 
 - **LLM**: Choice of:
-  - OpenAI (Recomemended)
+  - OpenAI (Recommended)
   - Oobabooga
   - Tabby ([tabbyAPI](https://github.com/theroyallab/tabbyAPI))
 - **Text-to-Speech**: Choice of:
@@ -68,8 +69,15 @@ Everything here is **under development** and is subject to change.
 ![print](./media/PrintComplete.jpg)
 - Modified chassis bottom to accommodate SD card installation (See: "Chassis Bottom (Mod SD CARD).stl")
 
+## License
+[MIT License](./LICENSE)
+
+## Contributing
+[Contributing Instructions](./CONTRIBUTING.md)
+
 ## Additional Resources
 - [@wizard.py](https://www.instagram.com/wizard.py/)
 - [@charliediaz](https://www.hackster.io/charlesdiaz/how-to-build-your-own-replica-of-tars-from-interstellar-224833)
 - [@gptars](https://www.youtube.com/@gptars)
 - [@poboisvert](https://github.com/poboisvert/GPTARS_Interstellar)
+
