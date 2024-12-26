@@ -1,4 +1,10 @@
-# TARS from Interstellar x ChatGPT
+# TARS x ChatGPT
+
+<p align="center">
+    <a href="https://discord.gg/H3DYmnjz">
+      <img alt="discord invitation link" src="https://dcbadge.vercel.app/api/server/H3DYmnjz?style=flat" align="center" />
+    </a>
+</p>
 
 A recreation of the TARS robot from Interstellar, featuring AI capabilities and servo-driven movement. 
 - See `ENVSETUP.md` for instructions on setting up the software environment.
@@ -11,10 +17,18 @@ A recreation of the TARS robot from Interstellar, featuring AI capabilities and 
 - [Build Modifications](#build-modifications)
 - [Additional Resources](#additional-resources)
 
-## Hardware Requirements (IN DEVELOPMENT)
+## Hardware Requirements 
+
+Everything here is **under development** and is subject to change.
+# TARS Robot Components
 
 | Category | Component | Description | Link |
 |----------|-----------|-------------|------|
+| **Printing** | Bambu Labs Printer | Compatible models: P1S, A1, X1C | - |
+| | TPU Filament (Bambu) | For all "Flexor" parts | [Buy](https://us.store.bambulab.com/products/tpu-for-ams) |
+| | TPU Filament (Alternative) | Overture TPU filament | [Buy](https://www.amazon.com/Overture-Filament-Flexible-Consumables-Dimensional/dp/B07VDP2S3P/) |
+| | PETG Filament | For all non-Flexor parts | [Buy](https://us.store.bambulab.com/products/petg-hf) |
+| | PLA Filament | Optional - for rapid prototyping | - |
 | **Core Components** | Raspberry Pi 5 | Main computing unit | [Buy](https://www.amazon.com/Raspberry-Pi-Quad-core-Cortex-A76-Processor/dp/B0CTQ3BQLS/) |
 | | 3.5" LCD Display | Interface display | [Buy](https://www.amazon.com/OSOYOO-3-5inch-Display-Protective-Raspberry/dp/B09CD9W6NQ/) |
 | | 16-Channel PWM Servo Driver | I2C Interface | [Buy](https://www.amazon.com/gp/product/B00EIB0U7A/) |
@@ -35,14 +49,6 @@ A recreation of the TARS robot from Interstellar, featuring AI capabilities and 
 | **Fasteners** | M3 20mm Screws | Mounting (6x needed) | [Buy](https://www.amazon.com/gp/product/B0CR6DY4SS/) |
 | | M3 14mm Screws | Mounting (40x needed) | [Buy](https://www.amazon.com/gp/product/B0D9GW9K4G/) |
 | | M3 10mm Screws | Mounting (76x needed) | [Buy](https://www.amazon.com/gp/product/B0CR6G5XWC/) |
-
-## Printing Specifications
-- Printer: Bambu Labs P1S, A1, X1C
-- Materials:
-  - TPU for all "Flexor" parts ([Buy](https://us.store.bambulab.com/products/tpu-for-ams))
-    - Another option ([Buy](https://www.amazon.com/Overture-Filament-Flexible-Consumables-Dimensional/dp/B07VDP2S3P/ref=sr_1_1_sspa?dib=eyJ2IjoiMSJ9.FpCSwxR4TyJ78JqBztFgvMq_9RDGP970D4tJ7cVWk4YuN1ZprdFRl0SNhdoSjB1_pwZYBZ9Yu9JLLHMso9yiSbxlQvMt2gAGJ8jdeai8xi0Edn3PEWZtQpIFzZbd0sAZJW7DUhZ6MjGvCAp_vAYGQKSqrvVx2uD3DTRbwfrOzUYWZ8MBZ7OBa5NhZNNOPVgMIGMeLFTA-3hQ-H5nmnkjtodbMiD_NoDluO8PlPLtCY8.GRyPi-8RjtM51J3bE0mOfoS63XI3osq2uBOhHnt8bCU&dib_tag=se&keywords=TPU&qid=1735245429&sr=8-1-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&psc=1))
-  - PETG for all other parts ([Buy](https://us.store.bambulab.com/products/petg-hf))
-  - PLA also works for rapid prototyping.
 
 ## Software Stack
 
