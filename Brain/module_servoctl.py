@@ -16,19 +16,21 @@ portHand = 570
 starHand = 240
 
 # Center Lift Servo (0) Values
-upHeight = 205
-neutralHeight = 275
-downHeight = 450
+upHeight = 256
+neutralHeight = 168
+downHeight = 88
 
 # Port Drive Servo (1) Values
-forwardPort = 440
-neutralPort = 375
-backPort = 330
+forwardPort = 400
+neutralPort = 350
+backPort = 300
+perfectportoffset = 0 #use this to fine tune if its off by a few degrees
 
 # Starboard Drive Servo (2) Values
-forwardStarboard = 292
-neutralStarboard = 357
-backStarboard = 402
+forwardStarboard = 300
+neutralStarboard = 350
+backStarboard = 400
+perfectStaroffset = 0 #use this to fine tune if its off by a few degrees
 
 # moves the torso from a neutral position upwards, allowing the torso to pivot forwards or backwards
 def height_neutral_to_up():
