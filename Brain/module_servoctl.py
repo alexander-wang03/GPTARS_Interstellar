@@ -16,7 +16,7 @@ portHand = 570
 starHand = 240
 
 # Center Lift Servo (0) Values
-upHeight = 256
+upHeight = 250
 neutralHeight = 168
 downHeight = 88
 
