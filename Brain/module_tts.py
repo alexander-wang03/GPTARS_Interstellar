@@ -12,6 +12,8 @@ import requests
 import os 
 from datetime import datetime
 import azure.cognitiveservices.speech as speechsdk
+import numpy as np
+import sounddevice as sd
 
 def update_tts_settings(ttsurl):
     """
@@ -47,9 +49,136 @@ def update_tts_settings(ttsurl):
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: TTS update failed: {e}")
 
-def get_tts_stream(text, ttsoption, azure_api_key, azure_region, ttsurl, charvoice, ttsclone):
+def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normalize=False):
     """
-    Generate TTS audio stream for the given text using the specified TTS system.
+    Play the audio stream through speakers using SoundDevice with volume/gain adjustment.
+    
+    Parameters:
+    - tts_stream: Stream of audio data in chunks.
+    - samplerate: The sample rate of the audio data.
+    - channels: The number of audio channels (e.g., 1 for mono, 2 for stereo).
+    - gain: A multiplier for adjusting the volume. Default is 1.0 (no change).
+    - normalize: Whether to normalize the audio to use the full dynamic range.
+    """
+    try:
+        with sd.OutputStream(samplerate=samplerate, channels=channels, dtype='int16') as stream:
+            for chunk in tts_stream:
+                if chunk:
+                    # Convert bytes to int16 using numpy
+                    audio_data = np.frombuffer(chunk, dtype='int16')
+                    
+                    # Normalize the audio (if enabled)
+                    if normalize:
+                        max_value = np.max(np.abs(audio_data))
+                        if max_value > 0:
+                            audio_data = audio_data / max_value * 32767
+                    
+                    # Apply gain adjustment
+                    audio_data = np.clip(audio_data * gain, -32768, 32767).astype('int16')
+
+                    # Write the adjusted audio data to the stream
+                    stream.write(audio_data)
+                else:
+                    print("Received empty chunk.")
+    except Exception as e:
+        print(f"Error during audio playback: {e}")
+
+def azure_tts(text, azure_api_key, azure_region, ttsclone):
+    """
+    Generate TTS audio using Azure Speech SDK.
+    
+    Parameters:
+    - text (str): The text to convert into speech.
+    - azure_api_key (str): Azure API key for authentication.
+    - azure_region (str): Azure region for the TTS service.
+    - ttsclone (str): Voice configuration for Azure TTS.
+    """
+    try:
+        # Initialize Azure Speech SDK
+        speech_config = speechsdk.SpeechConfig(subscription=azure_api_key, region=azure_region)
+        audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
+
+        # Create a Speech Synthesizer
+        synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+
+        # SSML Configuration
+        ssml = f"""
+        <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
+            <voice name='{ttsclone}'>
+                <prosody rate="10%" pitch="5%" volume="default">
+                    {text}
+                </prosody>
+            </voice>
+        </speak>
+        """
+
+        # Perform speech synthesis
+        result = synthesizer.speak_ssml_async(ssml).get()
+
+        # Check for errors
+        if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+            print("Azure TTS synthesis completed.")
+        elif result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = result.cancellation_details
+            print(f"Speech synthesis canceled: {cancellation_details.reason}")
+            if cancellation_details.error_details:
+                print(f"Error details: {cancellation_details.error_details}")
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Azure TTS generation failed: {e}")
+    
+def local_tts(text):
+    """
+    Generate TTS audio locally using `espeak-ng` and `sox`.
+
+    Parameters:
+    - text (str): The text to convert into speech.
+    """
+    try:
+        command = (
+            f'espeak-ng -s 140 -p 50 -v en-us+m3 "{text}" --stdout | '
+            f'sox -t wav - -c 1 -t wav - gain 0.0 reverb 30 highpass 500 lowpass 3000 | aplay'
+        )
+        os.system(command)
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Local TTS generation failed: {e}")
+
+def server_tts(text, ttsurl, ttsclone):
+    """
+    Generate TTS audio using a server-based TTS system.
+
+    Parameters:
+    - text (str): The text to convert into speech.
+    - ttsurl (str): The base URL of the TTS server.
+    - ttsclone (str): Speaker/voice configuration for the TTS.
+    - play_audio_stream (Callable): Function to play the audio stream.
+    """
+    try:
+        chunk_size = 1024
+
+        full_url = f"{ttsurl}/tts_stream"
+        params = {
+            'text': text,
+            'speaker_wav': ttsclone,
+            'language': "en"
+        }
+        headers = {'accept': 'audio/x-wav'}
+
+        response = requests.get(full_url, params=params, headers=headers, stream=True)
+        response.raise_for_status()
+
+        # Pass the response content to play_audio_stream
+        def tts_stream():
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                yield chunk
+
+        play_audio_stream(tts_stream())
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Server TTS generation failed: {e}")
+
+
+def generate_tts_audio(text, ttsoption, azure_api_key=None, azure_region=None, ttsurl=None, charvoice=True, ttsclone=None):
+    """
+    Generate TTS audio for the given text using the specified TTS system.
 
     Parameters:
     - text (str): The text to convert into speech.
@@ -59,67 +188,25 @@ def get_tts_stream(text, ttsoption, azure_api_key, azure_region, ttsurl, charvoi
     - ttsclone (str): The TTS speaker/voice configuration.
     """
     try:
-        chunk_size = 1024
-
+        # Azure TTS generation
         if ttsoption == "azure":
             if not azure_api_key or not azure_region:
                 raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Azure API key and region must be provided for ttsoption 'azure'.")
-            
-            # Initialize Azure Speech SDK
-            speech_config = speechsdk.SpeechConfig(subscription=azure_api_key, region=azure_region)
-            audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=False)
-            synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+            azure_tts(text, azure_api_key, azure_region, ttsclone)
 
-            # Create SSML for advanced configuration
-            ssml = f"""
-            <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-                <voice name='{ttsclone}'>
-                    <prosody rate="0%" pitch="0%" volume="default">
-                        {text}
-                    </prosody>
-                </voice>
-            </speak>
-            """
-            
-            # Perform speech synthesis and yield audio chunks
-            result = synthesizer.speak_ssml_async(ssml).get()
-            if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-                audio_stream = result.audio_data_stream
-
-                while True:
-                    chunk = audio_stream.read(chunk_size)
-                    if not chunk:
-                        break
-                    yield chunk
-            elif result.reason == speechsdk.ResultReason.Canceled:
-                cancellation_details = result.cancellation_details
-                error_message = f"Speech synthesis canceled: {cancellation_details.reason}"
-                if cancellation_details.error_details:
-                    error_message += f" | Error details: {cancellation_details.error_details}"
-                raise RuntimeError(error_message)
-            
         # Local TTS generation using `espeak-ng`
         elif ttsoption == "local" and charvoice:
-            command = (
-                f'espeak-ng -s 140 -p 50 -v en-us+m3 "{text}" --stdout | '
-                f'sox -t wav - -c 1 -t wav - gain 0.0 reverb 30 highpass 500 lowpass 3000 | aplay'
-            )
-            os.system(command)
+            local_tts(text)
 
         # Server-based TTS generation using `xttsv2`
         elif ttsoption == "xttsv2" and charvoice:
-            full_url = f"{ttsurl}/tts_stream"
-            params = {
-                'text': text,
-                'speaker_wav': ttsclone,
-                'language': "en"
-            }
-            headers = {'accept': 'audio/x-wav'}
+            if not ttsurl:
+                raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: TTS URL and play_audio_stream function must be provided for 'xttsv2'.")
+            server_tts(text, ttsurl, ttsclone)
 
-            response = requests.get(full_url, params=params, headers=headers, stream=True)
-            response.raise_for_status()
-            for chunk in response.iter_content(chunk_size=chunk_size):
-                yield chunk
+        else:
+            raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Invalid TTS option or character voice flag.")
 
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Text-to-speech generation failed: {e}")
+

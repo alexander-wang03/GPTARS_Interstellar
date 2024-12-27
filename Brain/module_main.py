@@ -19,8 +19,6 @@ import json
 import requests
 import re
 from datetime import datetime
-import sounddevice as sd
-import numpy as np
 import concurrent.futures
 
 # === Custom Modules ===
@@ -28,7 +26,7 @@ from module_config import load_config
 from module_btcontroller import *
 from module_memory import get_longterm_memory, write_longterm_memory, get_shortterm_memories_tokenlimit, token_count
 from module_engine import check_for_module
-from module_tts import get_tts_stream
+from module_tts import generate_tts_audio
 from module_vision import get_image_caption_from_base64
 
 # === Constants and Globals ===
@@ -339,40 +337,6 @@ def process_completion(text):
     reply = llm_process(text, botres)
     return reply
 
-def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normalize=False):
-    """
-    Play the audio stream through speakers using SoundDevice with volume/gain adjustment.
-    
-    Parameters:
-    - tts_stream: Stream of audio data in chunks.
-    - samplerate: The sample rate of the audio data.
-    - channels: The number of audio channels (e.g., 1 for mono, 2 for stereo).
-    - gain: A multiplier for adjusting the volume. Default is 1.0 (no change).
-    - normalize: Whether to normalize the audio to use the full dynamic range.
-    """
-    try:
-        with sd.OutputStream(samplerate=samplerate, channels=channels, dtype='int16') as stream:
-            for chunk in tts_stream:
-                if chunk:
-                    # Convert bytes to int16 using numpy
-                    audio_data = np.frombuffer(chunk, dtype='int16')
-                    
-                    # Normalize the audio (if enabled)
-                    if normalize:
-                        max_value = np.max(np.abs(audio_data))
-                        if max_value > 0:
-                            audio_data = audio_data / max_value * 32767
-                    
-                    # Apply gain adjustment
-                    audio_data = np.clip(audio_data * gain, -32768, 32767).astype('int16')
-
-                    # Write the adjusted audio data to the stream
-                    stream.write(audio_data)
-                else:
-                    print("Received empty chunk.")
-    except Exception as e:
-        print(f"Error during audio playback: {e}")
-
 # === Callback Functions ===
 def wake_word_callback(wake_response):
     """
@@ -381,8 +345,7 @@ def wake_word_callback(wake_response):
     Parameters:
     - wake_response (str): The response to the wake word.
     """
-    tts_stream = get_tts_stream(wake_response, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['azure_api_key'], CONFIG['TTS']['azure_region'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
-    play_audio_stream(tts_stream)
+    generate_tts_audio(wake_response, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['azure_api_key'], CONFIG['TTS']['azure_region'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
 
 def utterance_callback(message):
     """
@@ -413,15 +376,12 @@ def utterance_callback(message):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: {reply}")
         # Stream TTS audio to speakers
         #print("Fetching TTS audio...")
-        tts_stream = get_tts_stream(reply, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])  # Send reply text to TTS
-        # Play the audio stream
-        #print("Playing TTS audio...")
-        play_audio_stream(tts_stream)
+        generate_tts_audio(reply, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])  # Send reply text to TTS
 
     except json.JSONDecodeError:
-        print("Invalid JSON format. Could not process user message.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Invalid JSON format. Could not process user message.")
     except Exception as e:
-        print(f"Error processing message: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: {e}")
 
 def post_utterance_callback():
     """
