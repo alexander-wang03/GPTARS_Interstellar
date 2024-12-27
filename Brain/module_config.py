@@ -40,6 +40,7 @@ def load_config():
             "controller_name": config['CONTROLS']['controller_name'],
         },
         "STT": {
+            "wake_word": config['STT']['wake_word'],
             "use_server": config.getboolean('STT', 'use_server'),
             "server_url": config['STT']['server_url'],
         },
@@ -73,6 +74,8 @@ def load_config():
         },
         "TTS": {
             "ttsoption": config['TTS']['ttsoption'],
+            "azure_api_key": os.getenv('AZURE_API_KEY'),
+            "azure_region": config['TTS']['azure_region'],
             "ttsurl": config['TTS']['ttsurl'],
             "charvoice": config.getboolean('TTS', 'charvoice'),
             "ttsclone": config['TTS']['ttsclone'],

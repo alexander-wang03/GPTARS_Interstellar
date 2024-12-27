@@ -26,7 +26,6 @@ import concurrent.futures
 # === Custom Modules ===
 from module_config import load_config
 from module_btcontroller import *
-from module_stt import *
 from module_memory import get_longterm_memory, write_longterm_memory, get_shortterm_memories_tokenlimit, token_count
 from module_engine import check_for_module
 from module_tts import get_tts_stream
@@ -58,17 +57,6 @@ stop_event = threading.Event()
 executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
 
 # === Threads ===
-def start_stt_thread():
-    """
-    Wrapper to start the STT functionality in a thread.
-    """
-    try:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Starting STT thread...")
-        while not stop_event.is_set():
-            start_stt()
-    except Exception as e:
-        print(f"Error in STT thread: {e}")
-
 def start_bt_controller_thread():
     """
     Wrapper to start the BT Controller functionality in a thread.
@@ -382,26 +370,23 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
                     stream.write(audio_data)
                 else:
                     print("Received empty chunk.")
-            
-            # Trigger the transcription process after playback
-            transcribe_command()  # go back to listening for voice (non wake word)
     except Exception as e:
         print(f"Error during audio playback: {e}")
 
 # === Callback Functions ===
-def wake_word_tts(data):
+def wake_word_callback(wake_response):
     """
-    Stream audio to speakers when the wake word is detected.
+    Play initial response when wake word is detected.
 
     Parameters:
-    - data (bytes): The audio data to play.
+    - wake_response (str): The response to the wake word.
     """
-    tts_stream = get_tts_stream(data, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
+    tts_stream = get_tts_stream(wake_response, CONFIG['TTS']['ttsoption'], CONFIG['TTS']['azure_api_key'], CONFIG['TTS']['azure_region'], CONFIG['TTS']['ttsurl'], CONFIG['TTS']['charvoice'], CONFIG['TTS']['ttsclone'])
     play_audio_stream(tts_stream)
 
-def handle_stt_message(message):
+def utterance_callback(message):
     """
-    Process the recognized message from module_stt and stream audio response to speakers.
+    Process the recognized message from STTManager and stream audio response to speakers.
 
     Parameters:
     - message (str): The recognized message from the Speech-to-Text (STT) module.
@@ -437,3 +422,10 @@ def handle_stt_message(message):
         print("Invalid JSON format. Could not process user message.")
     except Exception as e:
         print(f"Error processing message: {e}")
+
+def post_utterance_callback():
+    """
+    Restart listening for another utterance after handling the current one.
+    """
+    from app import stt_manager  # Import the global STTManager instance
+    stt_manager._transcribe_utterance()

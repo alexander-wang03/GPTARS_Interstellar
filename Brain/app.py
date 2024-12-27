@@ -16,11 +16,11 @@ import concurrent.futures
 
 # === Custom Modules ===
 from module_memory import load_character_attributes
-from module_stt import measure_background_noise, set_message_callback, set_wakewordtts_callback
+from module_stt import STTManager
 from module_tts import update_tts_settings
 from module_config import load_config
 from module_btcontroller import *
-from module_main import handle_stt_message, wake_word_tts, start_stt_thread, start_bt_controller_thread
+from module_main import wake_word_callback, utterance_callback, post_utterance_callback, start_bt_controller_thread
 
 # === Constants and Globals ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,8 +28,9 @@ os.chdir(BASE_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.append(os.getcwd())
 
-stop_event = threading.Event()
-executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
+CONFIG = load_config()
+
+# executor = concurrent.futures.ProcessPoolExecutor(max_workers=4)
 
 # === Helper Functions ===
 def init_app():
@@ -44,11 +45,6 @@ def init_app():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Script running from: {BASE_DIR}")
     #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] DEBUG: init_app() called")
     
-    # Load character data
-
-    # Measure background noise
-    measure_background_noise()
-
     # Load the configuration
     CONFIG = load_config()
     if CONFIG['TTS']['ttsoption'] == 'xttsv2':
@@ -59,28 +55,35 @@ if __name__ == "__main__":
     # Perform initial setup
     init_app()
 
-    # Configure STT and wakeword callbacks
-    set_message_callback(handle_stt_message)
-    set_wakewordtts_callback(wake_word_tts)
+    shutdown_event = threading.Event()
+
+    # Initialize STTManager
+    stt_manager = STTManager(config=CONFIG, shutdown_event=shutdown_event)
+
+    # Set callbacks for wake word and utterance handling
+    stt_manager.set_wake_word_callback(wake_word_callback)
+    stt_manager.set_utterance_callback(utterance_callback)
+    stt_manager.set_post_utterance_callback(post_utterance_callback)
 
     # Start necessary threads
-    stt_thread = threading.Thread(target=start_stt_thread, name="STTThread", daemon=True)
-    bt_controller_thread = threading.Thread(target=start_bt_controller_thread, name="BTControllerThread", daemon=True)
-
-    stt_thread.start()
-    bt_controller_thread.start()
+    # bt_controller_thread = threading.Thread(target=start_bt_controller_thread, name="BTControllerThread", daemon=True)
+    # bt_controller_thread.start()
 
     try:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Main program running. Press Ctrl+C to stop.")
-        while True:
-            pass  # Keep the main program running
-    except KeyboardInterrupt:
-        # Graceful shutdown on Ctrl+C
-        print("\nStopping all threads and shutting down executor...")
-        stop_event.set()  # Signal threads to stop
-        executor.shutdown(wait=True)
 
-        # Wait for threads to finish
-        stt_thread.join()
-        bt_controller_thread.join()
-        print("All threads and executor stopped gracefully.")
+        # Start the STT thread
+        stt_manager.start()
+
+        while not shutdown_event.is_set():
+            time.sleep(0.1) # Sleep to reduce CPU usage
+
+    except KeyboardInterrupt:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Stopping all threads and shutting down executor...")
+        shutdown_event.set()  # Signal global threads to shutdown
+        # executor.shutdown(wait=True)
+
+    finally:
+        stt_manager.stop()
+        # bt_controller_thread.join()
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: All threads and executor stopped gracefully.")

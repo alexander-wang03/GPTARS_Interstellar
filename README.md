@@ -1,4 +1,4 @@
-# TARS x ChatGPT
+# TARS-AI
 
 <p align="center">
     <a href="https://discord.gg/H3DYmnjz">
@@ -19,7 +19,6 @@ A recreation of the TARS robot from Interstellar, featuring AI capabilities and 
 ## Hardware Requirements 
 
 Everything here is **under development** and is subject to change.
-# TARS Robot Components
 
 | Category | Component | Description | Link |
 |----------|-----------|-------------|------|
@@ -51,7 +50,7 @@ Everything here is **under development** and is subject to change.
 
 ## Software Stack
 
-See `ENVSETUP.md` for instructions on setting up the software environment.
+See [`ENVSETUP.md`](./ENVSETUP.md) for instructions on setting up the software environment.
 
 [![GPTARS Software Demo](https://img.youtube.com/vi/4YObs8BV3Mc/0.jpg)](https://www.youtube.com/watch?v=4YObs8BV3Mc)
 
@@ -73,7 +72,7 @@ See `ENVSETUP.md` for instructions on setting up the software environment.
 [MIT License](./LICENSE)
 
 ## Contributing
-[Contributing Instructions](./CONTRIBUTING.md)
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for instructions on contributing to this project.
 
 ## Additional Resources
 - [@wizard.py](https://www.instagram.com/wizard.py/)

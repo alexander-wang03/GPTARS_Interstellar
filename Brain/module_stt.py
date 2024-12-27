@@ -10,304 +10,301 @@ detecting speech or specific keywords.
 
 # === Standard Libraries ===
 import os
-import sys
 import random
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 from pocketsphinx import LiveSpeech
-from threading import Event
+import threading
 import requests
 from datetime import datetime
 from io import BytesIO
+import time
 import wave
 import numpy as np
 import json
+from typing import Callable, Optional
 
-# === Custom Modules ===
-from module_config import load_config
+# === Class Definition ===
+class STTManager:
+    def __init__(self, config, shutdown_event: threading.Event):
+        """
+        Initialize the STTManager.
 
-# === Constants and Globals ===
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(BASE_DIR)
-sys.path.insert(0, BASE_DIR)
-sys.path.append(os.getcwd())
+        Parameters:
+        - config (dict): Configuration dictionary.
+        - shutdown_event (Event): Event to signal stopping the assistant.
+        """
+        self.config = config
+        self.shutdown_event = shutdown_event
+        self.SAMPLE_RATE = 16000
+        self.running = False
+        self.wake_word_callback: Optional[Callable[[str], None]] = None
+        self.utterance_callback: Optional[Callable[[str], None]] = None
+        self.vosk_model = None
+        self.silence_threshold = 10  # Default value; updated dynamically
+        self.WAKE_WORD = self.config['STT']['wake_word']
+        self.TARS_RESPONSES = [
+            "Yes? What do you need?",
+            "Ready and listening.",
+            "At your service.",
+            "Go ahead.",
+            "What can I do for you?",
+            "Listening. What's up?",
+            "Here. What do you require?",
+            "Yes? I'm here.",
+            "Standing by.",
+            "Online and awaiting your command."
+        ]
+        self._load_vosk_model()
+        self._measure_background_noise()
 
-CONFIG = load_config()
+    def _load_vosk_model(self):
+        """
+        Initialize the Vosk model for local STT transcription.
+        """
+        if not self.config['STT']['use_server']:
+            vosk_model_path = os.path.join(os.getcwd(), "vosk-model-small-en-us-0.15")
+            if not os.path.exists(vosk_model_path):
+                raise FileNotFoundError(
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Vosk model not found. Download from: https://alphacephei.com/vosk/models"
+                )
+            self.vosk_model = Model(vosk_model_path)
 
-SAMPLE_RATE = 16000
-WAKE_PHRASE = "hey tar"
-TARS_RESPONSES = [
-    "Yes? What do you need?",
-    "Ready and listening.",
-    "At your service.",
-    "Go ahead.",
-    "What can I do for you?",
-    "Listening. What's up?",
-    "Here. What do you require?",
-    "Yes? I'm here.",
-    "Standing by.",
-    "Online and awaiting your command."
-]
+    def _measure_background_noise(self):
+        """
+        Measure the background noise level for 2-3 seconds and set the silence threshold.
+        """
+        silence_margin = 1.2  # Add a 20% margin to background noise level
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Measuring background noise...")
 
-# Globals
-vosk_model = None
-running = False
-message_callback = None
-wakeword_callback = None
+        spinner = ['|', '/', '-', '\\']  # Spinner symbols
+        try:
+            background_rms_values = []
+            total_frames = 20  # 20 frames ~ 2-3 seconds
 
-# === Initialization ===
-if not CONFIG['STT']['use_server']:
-    VOSK_MODEL_PATH = os.path.join(BASE_DIR, "vosk-model-small-en-us-0.15")
-    if not os.path.exists(VOSK_MODEL_PATH):
-        raise FileNotFoundError("Vosk model not found. Download from: https://alphacephei.com/vosk/models")
-    vosk_model = Model(VOSK_MODEL_PATH)
+            with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1, dtype="int16") as stream:
+                for i in range(total_frames):
+                    data, _ = stream.read(4000)
+                    if data.size == 0 or not np.isfinite(data).all():
+                        rms = 0  # Assign zero RMS for invalid or empty data
+                    else:
+                        rms = np.sqrt(np.mean(np.square(data)))
+                    background_rms_values.append(rms)
 
-def measure_background_noise():
-    """
-    Measure the background noise level for 2-3 seconds and set the silence threshold.
-    """
-    global silence_threshold
-    silence_margin = 1.2  # 20% margin above background noise
+                    # Display spinner animation
+                    spinner_frame = spinner[i % len(spinner)]  # Rotate spinner symbol
+                    print(f"\rMeasuring... {spinner_frame}", end="", flush=True)
+                    time.sleep(0.1)  # Simulate processing time for smooth animation
 
-   
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Measuring background noise...")
-    
-    background_rms_values = []
+            # Calculate the threshold
+            background_noise = np.mean(background_rms_values)
+            self.silence_threshold = max(background_noise * silence_margin, 10)  # Avoid setting a very low threshold
 
-    with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
-        for _ in range(20):  # Collect ~2 seconds of audio (20 frames * 4000 samples)
-            data, _ = stream.read(4000)
-            if data.size == 0 or not np.isfinite(data).all():
-                rms = 0  # Assign zero RMS for invalid or empty data
+            # Clear the spinner and print the result
+            print(f"\r{' ' * 40}\r", end="", flush=True)  # Clear the line
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Silence threshold set to: {self.silence_threshold:.2f}")
+
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Failed to measure background noise: {e}")
+
+    def set_wake_word_callback(self, callback: Callable[[str], None]):
+        """
+        Set the callback function for wake word detection.
+        """
+        self.wake_word_callback = callback
+
+    def set_utterance_callback(self, callback: Callable[[str], None]):
+        """
+        Set the callback function for user utterance.
+        """
+        self.utterance_callback = callback
+
+    def set_post_utterance_callback(self, callback):
+        """
+        Set a callback to execute after the utterance is handled.
+        """
+        self.post_utterance_callback = callback
+
+    def start(self):
+        """
+        Start the STTManager in a separate thread.
+        """
+        self.running = True
+        self.thread = threading.Thread(
+            target=self._stt_processing_loop, name="STTThread", daemon=True
+        )
+        self.thread.start()
+
+    def stop(self):
+        """
+        Stop the STTManager.
+        """
+        self.running = False
+        self.shutdown_event.set()
+        self.thread.join()
+
+    def _stt_processing_loop(self):
+        """
+        Main loop to detect wake words and process utterances.
+        """
+        try:
+            while self.running:
+                if self.shutdown_event.is_set():
+                    break
+                if self._detect_wake_word():
+                    # If wake word detected, transcribe the user utterance
+                    self._transcribe_utterance()
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error in STT processing loop: {e}")
+        finally:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: STT Manager stopped.")
+
+    def _detect_wake_word(self) -> bool:
+        """
+        Detect the wake word using Pocketsphinx.
+        """
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: Idle...")
+        try:
+            with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1, dtype="int16") as stream:
+                speech = LiveSpeech(lm=False, keyphrase=self.WAKE_WORD, kws_threshold=1e-20)
+                for phrase in speech:
+                    if self.WAKE_WORD in phrase.hypothesis().lower():
+                        wake_response = random.choice(self.TARS_RESPONSES)
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: {wake_response}")
+
+                        # If a callback is set, send the wake_response
+                        if self.wake_word_callback:
+                            self.wake_word_callback(wake_response)
+                        return True
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Wake word detection failed: {e}")
+        return False
+
+    def _transcribe_utterance(self):
+        """
+        Process a user utterance after wake word detection.
+        """
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
+        try:
+            if self.config['STT']['use_server']:
+                return self._transcribe_with_server()
             else:
-                rms = np.sqrt(np.mean(np.square(data)))
-            background_rms_values.append(rms)
+                return self._transcribe_with_vosk()
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Utterance transcription failed: {e}")
 
-    background_noise = np.mean(background_rms_values)
-    silence_threshold = background_noise * silence_margin  # Add margin to background noise
-    if silence_threshold < 10:
-        silence_threshold = 10
-    else:
-        pass
-    #print(f"LOAD: Measured background noise: {background_noise:.2f}")
-    #print(f"LOAD: Silence threshold set to: {silence_threshold:.2f}")
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Silence threshold set to: {silence_threshold:.2f}")
-
-# === Wake Word Detection ===
-def set_wakewordtts_callback(callback_function):
-    """
-    Set the callback function to handle wake word TTS responses.
-
-    Parameters:
-    - callback_function (function): The function to be called when the wake word is detected.
-    """
-    global wakeword_callback
-    wakeword_callback = callback_function
-
-def detect_wake_word():
-    """
-    Continuously listens for the wake word using Pocketsphinx.
-    """
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{current_time}] TARS: Idle...")
-
-    speech = LiveSpeech(lm=False, keyphrase=WAKE_PHRASE, kws_threshold=1e-20)
-    for phrase in speech:
-        #print(f"Detected phrase: {phrase.hypothesis()}")
-        if WAKE_PHRASE in phrase.hypothesis().lower():
-            response = random.choice(TARS_RESPONSES)
-            print(f"[{current_time}] TARS: {response}")
-            if wakeword_callback:
-                wakeword_callback(response)
-            return True
-
-def transcribe_command():
-    """
-    Transcribes a command using either the local Vosk model or the server.
-    """
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
-    try:
-        if CONFIG['STT']['use_server']:
-            return transcribe_with_server()
-        else:
-            return transcribe_with_vosk()
-    except Exception as e:
-        print(f"[ERROR] Transcription failed: {e}")
-
-def transcribe_with_vosk():
-    """
-    Transcribes audio locally using Vosk.
-
-    Returns:
-    - str: The recognized text.
-    """
-    recognizer = None
-    try:
-        recognizer = KaldiRecognizer(vosk_model, SAMPLE_RATE)
-        #print("KaldiRecognizer initialized successfully.")
-
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
-            max_duration_frames = 50  # Limit maximum recording duration (~12.5 seconds)
-            total_frames = 0
-
-            while total_frames < max_duration_frames:  # Prevent infinite loops
+    def _transcribe_with_vosk(self):
+        """
+        Transcribe audio using the local Vosk model.
+        """
+        recognizer = KaldiRecognizer(self.vosk_model, self.SAMPLE_RATE)
+        with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1, dtype="int16", device=self.mic_index) as stream:
+            for _ in range(50):  # Limit duration (~12.5 seconds)
                 data, _ = stream.read(4000)
                 if recognizer.AcceptWaveform(data.tobytes()):
                     result = recognizer.Result()
-                    #print(f"[DEBUG] Recognized: {result}")
-                    if message_callback:
-                        message_callback(result)
+                    # print(f"[DEBUG] Recognized: {result}")
+                    if self.utterance_callback:
+                        self.utterance_callback(result)
                     return result
-                total_frames += 1
-            print("[ERROR] No valid transcription within duration limit.")
-            return None
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: No valid transcription within duration limit.")
+        return None
 
-    except Exception as e:
-        print(f"[ERROR] Error during local transcription: {e}")
-    finally:
-        if recognizer:
-            del recognizer
+    def _transcribe_with_server(self):
+        """
+        Transcribe audio by sending it to a server for processing.
+        """
+        try:
+            audio_buffer = BytesIO()
+            silent_frames = 0
+            max_silent_frames = 2  # ~1.25 seconds of silence
+            detected_speech = False
 
-def transcribe_with_server():
-    """
-    Transcribes audio by sending it to a server for processing.
-    """
-    try:
-        audio_buffer = BytesIO()
-        silent_frames = 0
-        max_silent_frames = 2  # ~1.25 seconds of silence
-        detected_speech = False
-        noise_threshold = silence_threshold  # Minimum RMS to ignore random noise
-        min_speech_duration = 4  # Require at least 4 consecutive frames of speech
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Starting audio recording...")
+            with sd.InputStream(samplerate=self.SAMPLE_RATE, channels=1, dtype="int16") as stream:
+                with wave.open(audio_buffer, "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(self.SAMPLE_RATE)
 
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Starting audio recording...")
-        with sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
-            with wave.open(audio_buffer, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(SAMPLE_RATE)
+                    speech_frames = 0  # Track consecutive speech frames
+                    max_duration_frames = 50  # Limit maximum recording duration (~12.5 seconds)
+                    total_frames = 0
 
-                speech_frames = 0  # Track consecutive speech frames
-                max_duration_frames = 50  # Limit maximum recording duration (~12.5 seconds)
-                total_frames = 0
+                    while total_frames < max_duration_frames:  # Prevent infinite loops
+                        data, _ = stream.read(4000)
+                        wf.writeframes(data.tobytes())
 
-                while total_frames < max_duration_frames:  # Prevent infinite loops
-                    data, _ = stream.read(4000)
-                    wf.writeframes(data.tobytes())
+                        # Calculate RMS (Root Mean Square) energy of the audio data
+                        rms = np.sqrt(np.mean(np.square(data)))
 
-                    # Calculate RMS (Root Mean Square) energy of the audio data
-                    rms = np.sqrt(np.mean(np.square(data)))
+                        if rms > self.silence_threshold:  # Voice detected
+                            if not detected_speech:
+                                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Speech detected.")
+                            detected_speech = True
+                            speech_frames += 1
+                            silent_frames = 0  # Reset silent frames
+                        elif detected_speech:  # Silence detected after speech
+                            silent_frames += 1
+                            if silent_frames > max_silent_frames:
+                                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Silence detected.")
+                                break
 
-                    if rms > silence_threshold:  # Voice detected
-                        if not detected_speech:
-                            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Speech detected.")
-                        detected_speech = True
-                        speech_frames += 1
-                        silent_frames = 0  # Reset silent frames
-                    elif detected_speech:  # Silence detected after speech
-                        silent_frames += 1
-                        if silent_frames > max_silent_frames:
-                            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Silence detected.")
-                            break
+                        total_frames += 1
 
-                    total_frames += 1
-
-        # Ensure the audio buffer is not empty
-        audio_buffer.seek(0)
-        buffer_size = audio_buffer.getbuffer().nbytes
-        if buffer_size == 0:
-            print("[ERROR] Audio buffer is empty. No audio recorded.")
-            return None
-
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Sent {buffer_size} bytes of audio")
-        files = {"audio": ("audio.wav", audio_buffer, "audio/wav")}
-
-        response = requests.post(CONFIG["STT"]["server_url"], files=files, timeout=10)
-
-        # Handle server response
-        if response.status_code == 200:
-            try:
-                # Parse the JSON response
-                transcription = response.json().get("transcription", [])
-                if isinstance(transcription, list) and transcription:
-                    raw_text = transcription[0].get("text", "").strip()
-                    
-                    # Format as Vosk-style JSON
-                    formatted_result = {
-                        "text": raw_text,
-                        "result": [
-                            {
-                                "conf": 1.0,
-                                "end": seg.get("end", 0),
-                                "start": seg.get("start", 0),
-                                "word": seg.get("text", ""),
-                            }
-                            for seg in transcription
-                        ],
-                    }
-
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] USER: {formatted_result['text']}")
-
-                    # If a callback is set, send the formatted JSON
-                    if message_callback:
-                        message_callback(json.dumps(formatted_result))  # Send as a JSON string
-
-                    return formatted_result
-                else:
-                    print("[ERROR] Unexpected transcription format or empty transcription.")
-                    return None
-            except Exception as e:
-                print(f"[ERROR] Exception while processing transcription: {e}")
+            # Ensure the audio buffer is not empty
+            audio_buffer.seek(0)
+            buffer_size = audio_buffer.getbuffer().nbytes
+            if buffer_size == 0:
+                print("[ERROR] Audio buffer is empty. No audio recorded.")
                 return None
 
-    except requests.exceptions.Timeout:
-        print("[ERROR] Server request timed out.")
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Request error during server transcription: {e}")
-    except Exception as e:
-        print(f"[ERROR] Unexpected error during server transcription: {e}")
-    finally:
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Exiting transcribe_with_server.")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Sent {buffer_size} bytes of audio")
+            files = {"audio": ("audio.wav", audio_buffer, "audio/wav")}
 
-def start_stt(stop_event: Event = None):
-    """
-    Start the voice assistant. Listens for wake word and transcribes commands.
+            response = requests.post(self.config["STT"]["server_url"], files=files, timeout=10)
 
-    Parameters:
-    - stop_event (Event): An optional event to signal stopping the voice assistant.
-    """
-    global running
-    running = True
+            # Handle server response
+            if response.status_code == 200:
+                try:
+                    # Parse the JSON response
+                    transcription = response.json().get("transcription", [])
+                    if isinstance(transcription, list) and transcription:
+                        raw_text = transcription[0].get("text", "").strip()
 
-    try:
-        while running:
-            if stop_event and stop_event.is_set():
-                print("Stopping STT...")
-                break
+                        # Format as Vosk-style JSON
+                        formatted_result = {
+                            "text": raw_text,
+                            "result": [
+                                {
+                                    "conf": 1.0,
+                                    "end": seg.get("end", 0),
+                                    "start": seg.get("start", 0),
+                                    "word": seg.get("text", ""),
+                                }
+                                for seg in transcription
+                            ],
+                        }
 
-            if detect_wake_word():
-                transcribe_command()
-    except KeyboardInterrupt:
-        print("\nSTT interrupted by user.")
-    except Exception as e:
-        print(f"Error in STT: {e}")
-    finally:
-        print("STT stopped.")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] USER: {formatted_result['text']}")
 
-def stop_stt():
-    """
-    Stop the voice assistant.
-    """
-    global running
-    running = False
-    print("Voice assistant stopped.")
+                        # If a callback is set, send the formatted JSON
+                        if self.utterance_callback:
+                            self.utterance_callback(json.dumps(formatted_result))  # Send as a JSON string
 
-def set_message_callback(callback):
-    """
-    Set the callback function to handle recognized messages.
+                        return formatted_result
+                    else:
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Unexpected transcription format or empty transcription.")
+                        return None
+                except Exception as e:
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Exception while processing transcription: {e}")
+                    return None
 
-    Parameters:
-    - callback (function): The function to be called when a message is recognized.
-    """
-    global message_callback
-    message_callback = callback
+        except requests.exceptions.Timeout:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Server request timed out.")
+        except requests.exceptions.RequestException as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Request error during server transcription: {e}")
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Unexpected error during server transcription: {e}")
+        finally:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Exiting _transcribe_with_server.")
