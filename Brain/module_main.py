@@ -1,20 +1,18 @@
 """
 module_main.py
 
-Main logic module for the GPTARS application.
+Core logic module for the GPTARS application.
 
-This file integrates various modules and handles core functionalities, including:
-- Managing Text-to-Speech (TTS) playback and configuration.
-- Setting up and interacting with Large Language Model (LLM) backends.
-- Building prompts and processing user inputs to generate AI responses.
-- Handling wake words, speech-to-text (STT), and user interaction workflows.
-- Managing emotion detection, character customization, and system threading for smooth operation.
+Integrates modules and manages key functionalities, including:
+- Text-to-Speech (TTS) playback and configuration
+- Interaction with Large Language Model (LLM) backends
+- Prompt building and AI response processing
+- Wake word handling and user interaction workflows
+- Emotion detection and system threading
 """
 # === Standard Libraries ===
 import os
-import sys
 import threading
-import time
 import json
 import requests
 import re

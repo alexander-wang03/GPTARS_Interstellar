@@ -1,10 +1,13 @@
 """
 module_tts.py
 
-Text-to-Speech (TTS) Module for GPTARS Application.
+Text-to-Speech (TTS) module for GPTARS application.
 
-This module handles TTS functionality, supporting both local and server-based systems
-to convert text into audio streams. 
+Handles TTS functionality to convert text into audio using:
+- Azure Speech SDK
+- Local tools (e.g., espeak-ng)
+- Server-based TTS systems
+
 """
 
 # === Standard Libraries ===

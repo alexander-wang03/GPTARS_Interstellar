@@ -1,10 +1,15 @@
 """
 app.py
 
-Main entry point for the GPTARS application. 
+Main entry point for the GPTARS application.
 
-Initializes modules, loads configuration, and manages key threads for functionality such as 
-speech-to-text, text-to-speech, Bluetooth control, and AI response generation.
+Initializes modules, loads configuration, and manages key threads for functionality such as:
+- Speech-to-text (STT)
+- Text-to-speech (TTS)
+- Bluetooth control
+- AI response generation
+
+Run this script directly to start the application.
 """
 
 # === Standard Libraries ===
@@ -36,11 +41,7 @@ CONFIG = load_config()
 # === Helper Functions ===
 def init_app():
     """
-    Performs initial setup for the application:
-    - Prints the base directory.
-    - Loads character content and training data.
-    - Measures background noise.
-    - Configures TTS settings if applicable.
+    Performs initial setup for the application
     """
     
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Script running from: {BASE_DIR}")
@@ -73,8 +74,8 @@ if __name__ == "__main__":
     initialize_managers(memory_manager, char_manager, stt_manager)
 
     # Start necessary threads
-    # bt_controller_thread = threading.Thread(target=start_bt_controller_thread, name="BTControllerThread", daemon=True)
-    # bt_controller_thread.start()
+    bt_controller_thread = threading.Thread(target=start_bt_controller_thread, name="BTControllerThread", daemon=True)
+    bt_controller_thread.start()
 
     try:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Main program running. Press Ctrl+C to stop.")
@@ -92,5 +93,5 @@ if __name__ == "__main__":
 
     finally:
         stt_manager.stop()
-        # bt_controller_thread.join()
+        bt_controller_thread.join()
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: All threads and executor stopped gracefully.")
