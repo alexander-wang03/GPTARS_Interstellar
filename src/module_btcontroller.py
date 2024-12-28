@@ -16,6 +16,8 @@ from module_servoctl import *
 from evdev import InputDevice, categorize, ecodes, list_devices
 import Adafruit_PCA9685
 
+global posevar
+
 try:
     pwm = Adafruit_PCA9685.PCA9685(busnum=1)  # Specify I2C bus 1
     pwm.set_pwm_freq(60)  # Set frequency to 60 Hz
@@ -25,6 +27,8 @@ except FileNotFoundError as e:
 except Exception as e:
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Unexpected error during PCA9685 initialization: {e}")
     pwm = None  # Fallback if hardware is unavailable
+
+
 
 # Set initial servo positions
 if pwm:
@@ -55,7 +59,7 @@ plusBtn = 24
 
 global gamepad_path
 toggle = True
-pose = False
+posevar = False
 
 SECRET_CODE = [
     "up", "up", "down", "down", "left", "right", "left", "right", "B", "A Button", "Start Button"
@@ -113,12 +117,12 @@ def turnLeft():
 	module_servoctl.down_to_neutral()
 	module_servoctl.neutral_from_left()
 
-def pose():
+def poseaction():
     module_servoctl.neutral_to_down()
     module_servoctl.torso_neutral_to_backwards()
     module_servoctl.down_to_up()
 
-def unpose():
+def unposeaction():
     module_servoctl.torso_return2()  
         
         
@@ -128,14 +132,15 @@ def action_dpad_up_pressed():
     stepForward()
 
 def action_dpad_down_pressed():
-    #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] CTRL: D-Pad Down pressed! Let's move down!")
-    global pose
-    if pose == False:
-        pose()
-        pose = True
-    elif pose == True:
-        unpose()
-        pose = False
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] CTRL: D-Pad Down pressed! Let's move down!")
+    global posevar
+    
+    if posevar == False:
+        poseaction()
+        posevar = True
+    elif posevar == True:
+        unposeaction()
+        posevar = False
 
 def action_dpad_left_pressed():
     #print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] CTRL: D-Pad Left pressed! Moving left!")
