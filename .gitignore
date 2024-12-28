@@ -166,9 +166,6 @@ TARS.wav
 #.idea/
 
 captured_image.jpg
-config.ini
+# config.ini
 output.wav
-/Brain/config.ini
-Brain/config.ini
-
 .vscode/*
