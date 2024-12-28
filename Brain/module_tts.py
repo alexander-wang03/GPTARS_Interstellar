@@ -117,7 +117,7 @@ def azure_tts(text, azure_api_key, azure_region, ttsclone):
 
         # Check for errors
         if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            print("Azure TTS synthesis completed.")
+            pass
         elif result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = result.cancellation_details
             print(f"Speech synthesis canceled: {cancellation_details.reason}")

@@ -189,7 +189,7 @@ To securely store and use your API keys for OpenAI, Ooba, or Tabby, create and c
 3. Locate the `[LLM]` section and update the parameters (for OpenAI):
    ```ini
    [LLM] # Large Language Model configuration (ooba/OAI or tabby)
-   backend = openai
+   llm_backend = openai
    # Set this to `openai` if using OpenAI models.
    base_url = https://api.openai.com
    # The URL for the OpenAI API.

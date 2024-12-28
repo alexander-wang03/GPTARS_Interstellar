@@ -46,7 +46,7 @@ def predict_class(user_input):
     #print(max_probability)
     #print(predicted_class)
 
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TOOL: {predicted_class} @ {formatted_percentage}")
+    # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TOOL: {predicted_class} @ {formatted_percentage}")
 
     # Return the predicted class and its probability
     if max_probability < 0.75:

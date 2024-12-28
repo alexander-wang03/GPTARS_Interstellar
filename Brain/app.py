@@ -15,12 +15,13 @@ from datetime import datetime
 import concurrent.futures
 
 # === Custom Modules ===
-from module_memory import load_character_attributes
+from module_config import load_config
+from module_character import CharacterManager
+from module_memory import MemoryManager
 from module_stt import STTManager
 from module_tts import update_tts_settings
-from module_config import load_config
 from module_btcontroller import *
-from module_main import wake_word_callback, utterance_callback, post_utterance_callback, start_bt_controller_thread
+from module_main import initialize_managers, wake_word_callback, utterance_callback, post_utterance_callback, start_bt_controller_thread
 
 # === Constants and Globals ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -55,15 +56,21 @@ if __name__ == "__main__":
     # Perform initial setup
     init_app()
 
+    # Create a shutdown event for global threads
     shutdown_event = threading.Event()
+
+    # Initialize CharacterManager, MemoryManager
+    char_manager = CharacterManager(config=CONFIG)
+    memory_manager = MemoryManager(config=CONFIG, char_name=char_manager.char_name, char_greeting=char_manager.char_greeting)
 
     # Initialize STTManager
     stt_manager = STTManager(config=CONFIG, shutdown_event=shutdown_event)
-
-    # Set callbacks for wake word and utterance handling
     stt_manager.set_wake_word_callback(wake_word_callback)
     stt_manager.set_utterance_callback(utterance_callback)
     stt_manager.set_post_utterance_callback(post_utterance_callback)
+
+    # Pass managers to main module
+    initialize_managers(memory_manager, char_manager, stt_manager)
 
     # Start necessary threads
     # bt_controller_thread = threading.Thread(target=start_bt_controller_thread, name="BTControllerThread", daemon=True)

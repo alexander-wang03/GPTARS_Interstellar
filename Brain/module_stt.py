@@ -40,6 +40,7 @@ class STTManager:
         self.running = False
         self.wake_word_callback: Optional[Callable[[str], None]] = None
         self.utterance_callback: Optional[Callable[[str], None]] = None
+        self.post_utterance_callback: Optional[Callable] = None
         self.vosk_model = None
         self.silence_threshold = 10  # Default value; updated dynamically
         self.WAKE_WORD = self.config['STT']['wake_word']
@@ -180,7 +181,9 @@ class STTManager:
         # except Exception as e:
         #     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Wake word detection failed: {e}")
         # return False
-        self.wake_word_callback("Hello. How can I help you?")
+        wake_response = "Hello. How can I help you?"
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] TARS: {wake_response}")
+        self.wake_word_callback(wake_response)
         return True
 
     def _transcribe_utterance(self):
@@ -190,9 +193,14 @@ class STTManager:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STAT: Listening...")
         try:
             if self.config['STT']['use_server']:
-                return self._transcribe_with_server()
+                result = self._transcribe_with_server()
             else:
-                return self._transcribe_with_vosk()
+                result = self._transcribe_with_vosk()
+            
+            # Call post-utterance callback if utterance was detected recently, otherwise return to wake word detection
+            if self.post_utterance_callback and result:
+                self.post_utterance_callback()
+
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Utterance transcription failed: {e}")
 

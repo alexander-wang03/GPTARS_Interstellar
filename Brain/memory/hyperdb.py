@@ -14,7 +14,7 @@ config.read('config.ini')
 
 def get_embedding_new(documents):
     base_url = config.getboolean('LLM', 'base_url')  # Replace with your API base URL
-    api_key = get_api_key(config['LLM']['backend'])
+    api_key = get_api_key(config['LLM']['llm_backend'])
     encoding_format = "text/plain"
     
     url = f"{base_url}/v1/embeddings"
