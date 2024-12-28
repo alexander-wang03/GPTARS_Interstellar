@@ -70,38 +70,38 @@ def check_for_module(user_input):
         predicted_class = "Search"
 
     if predicted_class:
-        print(f"Predicted Class: {predicted_class}")
-        print(f"Probability: {probability}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Predicted Class: {predicted_class}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Probability: {probability}")
 
         # Module logic based on prediction
         if predicted_class == "Weather":
-            print(f"Weather MODULE")
+            # print(f"Weather MODULE")
             weather_info = search_google(user_input)
             module_engine = f"*Using tool Web Search* Use the following results from a realtime web search: {weather_info}"
 
         elif predicted_class == "News":
-            print(f"News MODULE")
+            # print(f"News MODULE")
             result = search_google_news(user_input)
             module_engine = f"*Using tool Web Search* Summarize the news from the following web search results: {result}"
 
         elif predicted_class == "Vision":
-            print(f"Vision MODULE")
+            # print(f"Vision MODULE")
             result = describe_camera_view()
             module_engine = f"*Using tool Vision* The following is a summary of what TARS can see: {result}"
             print(result)
 
         elif predicted_class == "Search":
-            print(f"Search MODULE")
+            # print(f"Search MODULE")
             result = search_google(user_input)
             module_engine = f"*Using tool Web Search* Use this answer from Google to respond to the user: {result}"
             print(module_engine)
 
         elif predicted_class == "goodbye":
-            print(f"Goodbye MODULE")
+            # print(f"Goodbye MODULE")
             module_engine = "*User is leaving the chat politely*"
 
     else:
         module_engine = "No_Tool"
-        # print(f"[INFO] No module needed. Maximum probability: {probability}")
+        # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: No module needed. Maximum probability: {probability}")
 
     return module_engine

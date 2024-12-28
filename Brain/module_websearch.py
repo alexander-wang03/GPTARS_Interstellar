@@ -20,6 +20,7 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import atexit
+from datetime import datetime
 
 # === Helper Functions ===
 # Silence logs to suppress unnecessary outputs
@@ -73,7 +74,7 @@ def wait_for_element(element_id: str, delay: int = 10):
     try:
         WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.ID, element_id)))
     except Exception:
-        print(f"Element with ID '{element_id}' not found.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Element with ID '{element_id}' not found.")
         
 def extract_text(selector):
     """
@@ -130,7 +131,7 @@ def search_google(query):
     Returns:
     - tuple: Extracted content and links.
     """
-    print(f"[INFO] Searching Google for: {query}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Searching Google for: {query}")
     driver.get("https://google.com/search?hl=en&q=" + query)
     wait_for_element('res')
     save_debug()
@@ -138,13 +139,13 @@ def search_google(query):
     text = ""
     # Featured snippets
     text += extract_text('.wDYxhc')
-    print(f"[INFO] Featured snippets: {text}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Featured snippets: {text}")
     # Knowledge panels
     text += extract_text('.hgKElc')
-    print(f"[INFO] Knowledge panels: {text}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Knowledge panels: {text}")
     # Page snippets
     text += extract_text('.r025kc.lVm3ye')
-    print(f"[INFO] Page snippets: {text}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Page snippets: {text}")
     # Additional selectors for compatibility
     text += extract_text('.yDYNvb.lyLwlc')
 
@@ -160,7 +161,7 @@ def search_google_news(query):
     Returns:
     - tuple: Extracted content and links.
     """
-    print(f"[INFO] Fetching Google News for: {query}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Fetching Google News for: {query}")
     return search_query(
         "https://google.com/search?hl=en&gl=us&tbm=nws&q=",
         query,
@@ -177,7 +178,7 @@ def search_duckduckgo(query):
     Returns:
     - tuple: Extracted content and links.
     """
-    print(f"[INFO] Searching DuckDuckGo for: {query}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Searching DuckDuckGo for: {query}")
     return search_query(
         "https://duckduckgo.com/?kp=-2&kl=wt-wt&q=",
         query,

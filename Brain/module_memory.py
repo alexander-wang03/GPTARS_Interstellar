@@ -197,7 +197,7 @@ class MemoryManager:
         - json_file_path (str): Path to the JSON file.
         """
         if os.path.exists(json_file_path):
-            print("Injecting memories from JSON.")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Injecting memories from JSON.")
             with open(json_file_path, 'r') as file:
                 memories = json.load(file)
 
@@ -247,5 +247,5 @@ class MemoryManager:
         if response.status_code == 200:
             return response.json()
         else:
-            print("Error:", response.status_code, response.text)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: ", response.status_code, response.text)
             return None

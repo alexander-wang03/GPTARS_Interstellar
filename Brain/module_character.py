@@ -54,8 +54,8 @@ class CharacterManager:
             self.char_greeting = self.char_greeting.replace("{{char}}", self.char_name)
             self.char_greeting = self.char_greeting.replace("{{time}}", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-            print(f"Character loaded: {self.char_name}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Character loaded: {self.char_name}")
         except FileNotFoundError:
-            print(f"Error: Character file '{self.character_card}' not found.")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Character file '{self.character_card}' not found.")
         except Exception as e:
-            print(f"Error while loading character attributes: {e}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error while loading character attributes: {e}")

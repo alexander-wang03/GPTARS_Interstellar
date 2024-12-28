@@ -16,6 +16,7 @@ from io import BytesIO
 import requests
 import torch
 import base64
+from datetime import datetime
 
 # === Custom Modules ===
 from module_config import load_config
@@ -38,14 +39,14 @@ def initialize_blip_model():
     """
     global processor, model
     if processor is None or model is None:
-        print("[INFO] Initializing BLIP model and processor...")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Initializing BLIP model and processor...")
         processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
         model.to(device)
         model = torch.quantization.quantize_dynamic(
             model, {torch.nn.Linear}, dtype=torch.qint8
         )
-        print("[INFO] BLIP model and processor initialized.")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: BLIP model and processor initialized.")
 
 
 def capture_image() -> BytesIO:
@@ -72,9 +73,9 @@ def capture_image() -> BytesIO:
         #print(height)
         return BytesIO(process.stdout)  # Return image as BytesIO
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Error capturing image: {e}")
+        raise RuntimeError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error capturing image: {e}")
     except Exception as e:
-        print("[ERROR] Image capture failed:", traceback.format_exc())
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Image capture failed:", traceback.format_exc())
         raise e
 
 def send_image_to_server(image_bytes: BytesIO) -> str:
@@ -97,7 +98,7 @@ def send_image_to_server(image_bytes: BytesIO) -> str:
             error_message = response.json().get('error', 'Unknown error')
             raise RuntimeError(f"Server error ({response.status_code}): {error_message}")
     except Exception as e:
-        print("[ERROR] Failed to send image to server:", traceback.format_exc())
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Failed to send image to server:", traceback.format_exc())
         raise e
 
 def get_image_caption_from_base64(base64_str):
@@ -123,7 +124,7 @@ def get_image_caption_from_base64(base64_str):
         caption = processor.decode(outputs[0], skip_special_tokens=True)
         return caption
     except Exception as e:
-        raise RuntimeError(f"Error generating caption from base64: {e}")
+        raise RuntimeError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error generating caption from base64: {e}")
 
 # === Main Functions ===
 def describe_camera_view() -> str:
@@ -150,7 +151,7 @@ def describe_camera_view() -> str:
             caption = processor.decode(outputs[0], skip_special_tokens=True)
             return caption
     except Exception as e:
-        print("Error during image processing:", traceback.format_exc())
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error during image processing:", traceback.format_exc())
         return f"Error: {e}"
     
 

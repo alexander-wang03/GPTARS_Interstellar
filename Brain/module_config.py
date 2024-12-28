@@ -12,6 +12,7 @@ import os
 import sys
 import configparser
 from dotenv import load_dotenv
+from datetime import datetime
 
 # === Initialization ===
 load_dotenv() # Load environment variables from .env file
@@ -110,12 +111,12 @@ def get_api_key(llm_backend: str) -> str:
 
     # Check if the backend is supported
     if llm_backend not in backend_to_env_var:
-        raise ValueError(f"Unsupported LLM backend: {llm_backend}")
+        raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Unsupported LLM backend: {llm_backend}")
 
     # Fetch the API key from the environment
     api_key = os.getenv(backend_to_env_var[llm_backend])
     if not api_key:
-        raise ValueError(f"API key not found for LLM backend: {llm_backend}")
+        raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: API key not found for LLM backend: {llm_backend}")
     
     return api_key
 

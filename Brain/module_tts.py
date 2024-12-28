@@ -45,7 +45,7 @@ def update_tts_settings(ttsurl):
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: TTS Settings updated successfully.")
         else:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Failed to update TTS settings. Status code: {response.status_code}")
-            print(f"Response: {response.text}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] INFO: Response: {response.text}")
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: TTS update failed: {e}")
 
@@ -79,9 +79,9 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
                     # Write the adjusted audio data to the stream
                     stream.write(audio_data)
                 else:
-                    print("Received empty chunk.")
+                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Received empty chunk.")
     except Exception as e:
-        print(f"Error during audio playback: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error during audio playback: {e}")
 
 def azure_tts(text, azure_api_key, azure_region, ttsclone):
     """
@@ -120,9 +120,9 @@ def azure_tts(text, azure_api_key, azure_region, ttsclone):
             pass
         elif result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = result.cancellation_details
-            print(f"Speech synthesis canceled: {cancellation_details.reason}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Speech synthesis canceled: {cancellation_details.reason}")
             if cancellation_details.error_details:
-                print(f"Error details: {cancellation_details.error_details}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error details: {cancellation_details.error_details}")
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Azure TTS generation failed: {e}")
     

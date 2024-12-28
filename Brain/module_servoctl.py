@@ -14,16 +14,17 @@ from __future__ import division
 import time
 import Adafruit_PCA9685
 from threading import Thread
+from datetime import datetime
 
 try:
     # Attempt to initialize the PCA9685 using I2C
     pwm = Adafruit_PCA9685.PCA9685(busnum=1)
     pwm.set_pwm_freq(60)  # Set frequency to 60 Hz for servos
 except FileNotFoundError as e:
-    print(f"Error: I2C device not found. Ensure that /dev/i2c-1 exists. Details: {e}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: I2C device not found. Ensure that /dev/i2c-1 exists. Details: {e}")
     pwm = None  # Fallback if hardware is unavailable
 except Exception as e:
-    print(f"Unexpected error during PCA9685 initialization: {e}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Unexpected error during PCA9685 initialization: {e}")
     pwm = None  # Fallback if hardware is unavailable
 
 portMain = 610

@@ -49,7 +49,7 @@ def start_bt_controller_thread():
         while not stop_event.is_set():
             start_controls()
     except Exception as e:
-        print(f"Error in BT Controller thread: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error in BT Controller thread: {e}")
 
 # === Core Functions ===
 def extract_text(json_response, picture):
@@ -354,7 +354,7 @@ def utterance_callback(message):
 
         # Check for shutdown command
         if "shutdown pc" in message_dict['text'].lower():
-            print("Shutting down the PC...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] SHUTDOWN: Shutting down the PC...")
             os.system('shutdown /s /t 0')
             return  # Exit function after issuing shutdown command
         
