@@ -18,8 +18,8 @@ from module_vision import describe_camera_view
 
 # === Constants and Globals ===
 # Pre-trained Models
-MODEL_FILENAME = 'module_engine/pickles/naive_bayes_model.pkl'
-VECTORIZER_FILENAME = 'module_engine/pickles/tfidf_vectorizer.pkl'
+MODEL_FILENAME = 'engine/pickles/naive_bayes_model.pkl'
+VECTORIZER_FILENAME = 'engine/pickles/tfidf_vectorizer.pkl'
 
 # Load the Naive Bayes classifier and TF-IDF vectorizer
 nb_classifier = joblib.load(MODEL_FILENAME)

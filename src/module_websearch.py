@@ -66,7 +66,7 @@ def save_debug():
     """
     Save the current page source for debugging purposes.
     """
-    with open("module_engine/debug.html", "w", encoding='utf-8') as f:
+    with open("engine/debug.html", "w", encoding='utf-8') as f:
         f.write(driver.page_source)
 
 def wait_for_element(element_id: str, delay: int = 10):

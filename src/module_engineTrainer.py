@@ -19,9 +19,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 # === Constants ===
-DEFAULT_TRAINING_DATA_PATH = 'module_engine/training/training_data.csv'
-DEFAULT_MODEL_PATH = 'module_engine/pickles/naive_bayes_model.pkl'
-DEFAULT_VECTORIZER_PATH = 'module_engine/pickles/tfidf_vectorizer.pkl'
+DEFAULT_TRAINING_DATA_PATH = 'engine/training/training_data.csv'
+DEFAULT_MODEL_PATH = 'engine/pickles/naive_bayes_model.pkl'
+DEFAULT_VECTORIZER_PATH = 'engine/pickles/tfidf_vectorizer.pkl'
 
 def delete_existing_files(nb_classifier_path=DEFAULT_MODEL_PATH, vectorizer_path=DEFAULT_VECTORIZER_PATH):
     """
@@ -40,7 +40,7 @@ def sort_and_save_data(df):
     - df (DataFrame): Training data DataFrame.
     """
     sorted_df = df.sort_values(by='label')
-    sorted_df.to_csv('module_engine/training/sorted_training_data.csv', index=False)
+    sorted_df.to_csv('engine/training/sorted_training_data.csv', index=False)
     # print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] LOAD: Data sorted and saved as 'sorted_training_data.csv'.")
 
 def train_and_validate_model(df_train, nb_classifier_path, vectorizer_path):

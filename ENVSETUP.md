@@ -176,15 +176,15 @@ To securely store and use your API keys for OpenAI, Ooba, or Tabby, create and c
    [TTS] # Text-to-Speech configuration (about 3.4GB TTS #xttsv2 or local or TARS)
    ttsurl = http://<server-ip>:8020
    # Replace <server-ip> with the IP address of the machine running the XTTS API Server (e.g., 192.168.2.20).
-   charvoice = True
+   toggle_charvoice = True
    # Use character-specific voice settings.
    ttsoption = xttsv2
    # Set this to `xttsv2` to use the XTTS API Server.
-   ttsclone = TARS-Short
+   tts_voice = TARS-Short
    # Set this to the desired speaker file (e.g., `TARS-Short` or `TARS-Long`).
    ```
    - The `ttsurl` should point to the IP and port of the XTTS API Server.
-   - The `ttsclone` should match the desired speaker (e.g., `TARS-Short`).
+   - The `tts_voice` should match the desired speaker (e.g., `TARS-Short`).
 
 3. Locate the `[LLM]` section and update the parameters (for OpenAI):
    ```ini

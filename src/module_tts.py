@@ -86,7 +86,7 @@ def play_audio_stream(tts_stream, samplerate=22050, channels=1, gain=1.0, normal
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Error during audio playback: {e}")
 
-def azure_tts(text, azure_api_key, azure_region, ttsclone):
+def azure_tts(text, azure_api_key, azure_region, tts_voice):
     """
     Generate TTS audio using Azure Speech SDK.
     
@@ -94,7 +94,7 @@ def azure_tts(text, azure_api_key, azure_region, ttsclone):
     - text (str): The text to convert into speech.
     - azure_api_key (str): Azure API key for authentication.
     - azure_region (str): Azure region for the TTS service.
-    - ttsclone (str): Voice configuration for Azure TTS.
+    - tts_voice (str): Voice configuration for Azure TTS.
     """
     try:
         # Initialize Azure Speech SDK
@@ -107,7 +107,7 @@ def azure_tts(text, azure_api_key, azure_region, ttsclone):
         # SSML Configuration
         ssml = f"""
         <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='http://www.w3.org/2001/mstts' xml:lang='en-US'>
-            <voice name='{ttsclone}'>
+            <voice name='{tts_voice}'>
                 <prosody rate="10%" pitch="5%" volume="default">
                     {text}
                 </prosody>
@@ -145,14 +145,14 @@ def local_tts(text):
     except Exception as e:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Local TTS generation failed: {e}")
 
-def server_tts(text, ttsurl, ttsclone):
+def server_tts(text, ttsurl, tts_voice):
     """
     Generate TTS audio using a server-based TTS system.
 
     Parameters:
     - text (str): The text to convert into speech.
     - ttsurl (str): The base URL of the TTS server.
-    - ttsclone (str): Speaker/voice configuration for the TTS.
+    - tts_voice (str): Speaker/voice configuration for the TTS.
     - play_audio_stream (Callable): Function to play the audio stream.
     """
     try:
@@ -161,7 +161,7 @@ def server_tts(text, ttsurl, ttsclone):
         full_url = f"{ttsurl}/tts_stream"
         params = {
             'text': text,
-            'speaker_wav': ttsclone,
+            'speaker_wav': tts_voice,
             'language': "en"
         }
         headers = {'accept': 'audio/x-wav'}
@@ -179,7 +179,7 @@ def server_tts(text, ttsurl, ttsclone):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Server TTS generation failed: {e}")
 
 
-def generate_tts_audio(text, ttsoption, azure_api_key=None, azure_region=None, ttsurl=None, charvoice=True, ttsclone=None):
+def generate_tts_audio(text, ttsoption, azure_api_key=None, azure_region=None, ttsurl=None, toggle_charvoice=True, tts_voice=None):
     """
     Generate TTS audio for the given text using the specified TTS system.
 
@@ -187,25 +187,25 @@ def generate_tts_audio(text, ttsoption, azure_api_key=None, azure_region=None, t
     - text (str): The text to convert into speech.
     - ttsoption (str): The TTS system to use (Azure, server-based, or local).
     - ttsurl (str): The base URL of the TTS server (for server-based TTS).
-    - charvoice (bool): Flag indicating whether to use character voice for TTS.
-    - ttsclone (str): The TTS speaker/voice configuration.
+    - toggle_charvoice (bool): Flag indicating whether to use character voice for TTS.
+    - tts_voice (str): The TTS speaker/voice configuration.
     """
     try:
         # Azure TTS generation
         if ttsoption == "azure":
             if not azure_api_key or not azure_region:
                 raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Azure API key and region must be provided for ttsoption 'azure'.")
-            azure_tts(text, azure_api_key, azure_region, ttsclone)
+            azure_tts(text, azure_api_key, azure_region, tts_voice)
 
         # Local TTS generation using `espeak-ng`
-        elif ttsoption == "local" and charvoice:
+        elif ttsoption == "local" and toggle_charvoice:
             local_tts(text)
 
         # Server-based TTS generation using `xttsv2`
-        elif ttsoption == "xttsv2" and charvoice:
+        elif ttsoption == "xttsv2" and toggle_charvoice:
             if not ttsurl:
                 raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: TTS URL and play_audio_stream function must be provided for 'xttsv2'.")
-            server_tts(text, ttsurl, ttsclone)
+            server_tts(text, ttsurl, tts_voice)
 
         else:
             raise ValueError(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Invalid TTS option or character voice flag.")
