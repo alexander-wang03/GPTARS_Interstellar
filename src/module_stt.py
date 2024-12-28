@@ -24,8 +24,6 @@ import numpy as np
 import json
 from typing import Callable, Optional
 
-sd.default.device = 1
-
 # === Class Definition ===
 class STTManager:
     def __init__(self, config, shutdown_event: threading.Event):
@@ -66,7 +64,7 @@ class STTManager:
         Initialize the Vosk model for local STT transcription.
         """
         if not self.config['STT']['use_server']:
-            vosk_model_path = os.path.join(os.getcwd(), "vosk-model-small-en-us-0.15")
+            vosk_model_path = os.path.join(os.getcwd(), "module_stt", "vosk-model-small-en-us-0.15")
             if not os.path.exists(vosk_model_path):
                 raise FileNotFoundError(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ERROR: Vosk model not found. Download from: https://alphacephei.com/vosk/models"

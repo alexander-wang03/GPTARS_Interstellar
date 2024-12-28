@@ -87,7 +87,7 @@ def check_secret_code(button_name):
         # If the sequence matches the full secret code
         if len(input_sequence) == len(SECRET_CODE):
             from module_secrets import play_video_fullscreen
-            play_video_fullscreen("media/secret.mp4", rotation_angle=90)
+            play_video_fullscreen("secrets/secret.mp4", rotation_angle=90)
             input_sequence = []  # Reset the sequence after the code is entered
     else:
         # If the sequence doesn't match, reset it
